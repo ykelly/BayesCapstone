@@ -1,0 +1,41 @@
+---
+title: "Quake Data Wrangling"
+author: "Katja McKiernan"
+date: "November 14, 2017"
+output: html_document
+---
+
+
+```{r}
+cleanQuakes = read.csv("cleanQuakes.csv")
+
+library(dplyr)
+cleanQuakes1 <- cleanQuakes %>%
+  select(-c(X.1))
+View(cleanQuakes1)
+```
+
+
+
+```{r}
+library(stringr)
+#Creating a year, month, and day columns and adding to cleanQuakes1
+Year_ <- year(cleanQuakes1$time)
+Month_ <- month(cleanQuakes1$time)
+Day_ <- day(cleanQuakes1$time)
+cleanQuakes1 <- cbind(cleanQuakes1, Year_)
+cleanQuakes1 <- cbind(cleanQuakes1, Month_)
+cleanQuakes1 <- cbind(cleanQuakes1, Day_)
+
+lapply(cleanQuakes1$time, as.character)
+
+cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
+time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
+cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake)
+
+cleanQuakesFin <- cleanQuakes1 %>%
+  select(-c(time))
+
+View(cleanQuakesFin)
+```
+
