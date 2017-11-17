@@ -19,6 +19,7 @@ View(cleanQuakes1)
 
 ```{r}
 library(stringr)
+library(lubridate)
 #Creating a year, month, and day columns and adding to cleanQuakes1
 Year_ <- year(cleanQuakes1$time)
 Month_ <- month(cleanQuakes1$time)
