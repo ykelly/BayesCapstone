@@ -1,0 +1,34 @@
+---
+title: "Checkpoint 4"
+author: "Katya Kelly, Katja McKiernan"
+date: "November 17, 2017"
+output: html_document
+---
+
+```{r}
+library(ggmap)
+centerSanFran <- get_map(location = "san francisco",
+    color = "color",
+    source = "google",
+    maptype = "satellite",
+    zoom = 4)
+
+centerAnchorage <- get_map(location = "anchorage",
+    color = "color",
+    source = "google",
+    maptype = "satellite",
+    zoom = 4)
+
+ggmap(centerSanFran,
+    extent = "device",
+    ylab = "Latitude",
+    xlab = "Longitude")
+
+ggmap(centerAnchorage,
+    extent = "device",
+    ylab = "Latitude",
+    xlab = "Longitude")
+
+
+```
+
