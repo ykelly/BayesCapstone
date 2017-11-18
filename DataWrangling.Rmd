@@ -40,3 +40,54 @@ cleanQuakesFin <- cleanQuakes1 %>%
 View(cleanQuakesFin)
 ```
 
+
+```{r}
+#Create time until big quake or after quake variable
+
+HIQuake1975 <- filter(cleanQuakes1,  X < 25)
+HIQUake1975 <- filter(HIQuake1975, latitude < 50)
+
+
+FindMaxMagRow <- function(datasub){
+  #Finds the row within the input data that has the maximum magnitude
+  currentMax = 0
+  maxrow = 0
+  for(i in 1:nrow(datasub)){
+    magnitude = datasub$mag[[i]]
+    if(magnitude > currentMax){
+      currentMax = magnitude
+      maxrow =  i
+    }
+  }
+  return(maxrow)
+}
+
+
+
+CreateHours <- function(Qdata){
+  #Takes a dataset as an input and adds on a time_til_Quake variable that contains the number of hours prior to or after the biggest quake in that dataset; For example if the largest quake occurred on January 5, 1988 at 6 pm, then a quake that occurred in the same region on January 4, 1988 at 5pm would be assigned time_til_Quake = 25.
+  MaxMagRow = FindMaxMagRow(Qdata)
+  QuakeYear = Qdata$Year_[[MaxMagRow]]
+  QuakeMonth = Qdata$Month_[[MaxMagRow]]
+  QuakeDay = Qdata$Day_[[MaxMagRow]]
+  QuakeTime = Qdata$time_of_Quake[[MaxMagRow]]
+  QuakeHour = hour(QuakeTime)
+  time_til_Quake = rep(0, nrow(Qdata))
+  HoursToQuake = 0
+  for ( i in 1:nrow(Qdata)){
+    if(Qdata$Year_[[i]] == QuakeYear){
+      if(Qdata$Month_[[i]] == QuakeMonth){
+        if(Qdata$Day_[[i]] == QuakeDay){
+          #1. newhour: Get hours from Qdata$Time_of_Quake[[i]]
+          time_til_Quake[i] = QuakeHour-newhour
+        }
+      }
+    }
+  }
+  
+}
+
+
+
+```
+
