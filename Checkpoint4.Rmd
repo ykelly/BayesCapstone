@@ -6,29 +6,124 @@ output: html_document
 ---
 
 ```{r}
+cleanQuakes = read.csv("cleanQuakes.csv")
+
+library(dplyr)
+cleanQuakes1 <- cleanQuakes %>%
+  select(-c(X.1))
+```
+
+```{r}
+library(stringr)
+library(lubridate)
+#Creating a year, month, and day columns and adding to cleanQuakes1
+Year_ <- year(cleanQuakes1$time)
+Month_ <- month(cleanQuakes1$time)
+Day_ <- day(cleanQuakes1$time)
+cleanQuakes1 <- cbind(cleanQuakes1, Year_)
+cleanQuakes1 <- cbind(cleanQuakes1, Month_)
+cleanQuakes1 <- cbind(cleanQuakes1, Day_)
+
+lapply(cleanQuakes1$time, as.character)
+
+cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
+time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
+cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake)
+
+cleanQuakesFin <- cleanQuakes1 %>%
+  select(-c(time))
+```
+
+```{r}
 library(ggmap)
-centerSanFran <- get_map(location = "san francisco",
+centerLA <- get_map(location = "los angeles",
     color = "color",
     source = "google",
     maptype = "satellite",
     zoom = 4)
 
-centerAnchorage <- get_map(location = "anchorage",
+centerPH <- get_map(location = "port heiden",
     color = "color",
     source = "google",
     maptype = "satellite",
     zoom = 4)
 
-ggmap(centerSanFran,
+ggmap(centerLA,
     extent = "device",
     ylab = "Latitude",
     xlab = "Longitude")
 
-ggmap(centerAnchorage,
+ggmap(centerPH,
     extent = "device",
     ylab = "Latitude",
     xlab = "Longitude")
 
 
 ```
+
+```{r}
+library(dplyr)
+quakesAbove7 <- filter(cleanQuakesFin, mag >= 7)
+quakesSince1950 <- filter(cleanQuakesFin, Year_ >= 1950)
+quakesAbove7Since1950 <- filter(cleanQuakesFin, Year_ >=1950, mag >= 7)
+```
+
+
+```{r}
+library(mapproj)
+library(gridExtra)
+
+# color by magnitude, all earthquakes
+map1 <- ggmap(centerLA) + geom_point(data=cleanQuakes, aes(x = longitude, y =latitude, color=mag), size = 0.5) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+map2 <- ggmap(centerPH) + geom_point(data=cleanQuakes, aes(x=longitude, y=latitude, color=mag), size = 0.5) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+
+# color by magnitude, earthquakes above 7
+map3 <- ggmap(centerLA) + geom_point(data=quakesAbove7, aes(x = longitude, y =latitude, color=mag), size = 1) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+map4 <- ggmap(centerPH) + geom_point(data=quakesAbove7, aes(x=longitude, y=latitude, color=mag), size = 1) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+
+grid.arrange(map1, map2, map3, map4, ncol=2)
+
+#also color by year
+```
+
+```{r}
+# color by year, all earthquakes since 1950
+map5 <- ggmap(centerLA) + geom_point(data=quakesSince1950, aes(x = longitude, y =latitude, color=Year_), size = 0.5) +
+  scale_color_gradient(low="chartreuse", high="chartreuse4")
+map6 <- ggmap(centerPH) + geom_point(data=quakesSince1950, aes(x=longitude, y=latitude, color=Year_), size = 0.5) +
+  scale_color_gradient(low="chartreuse", high="chartreuse4")
+
+# color by year, earthquakes above 7 since 1950
+map7 <- ggmap(centerLA) + geom_point(data=quakesAbove7Since1950, aes(x = longitude, y =latitude, color=Year_), size = 1) +
+  scale_color_gradient(low="chartreuse", high="chartreuse4")
+map8 <- ggmap(centerPH) + geom_point(data=quakesAbove7Since1950, aes(x=longitude, y=latitude, color=Year_), size = 1) +
+  scale_color_gradient(low="chartreuse", high="chartreuse4")
+
+grid.arrange(map5, map6, map7, map8, ncol=2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
