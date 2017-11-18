@@ -65,7 +65,7 @@ FindMaxMagRow <- function(datasub){
 
 
 CreateHours <- function(Qdata){
-  #Takes a dataset as an input and adds on a time_til_Quake variable that contains the number of hours prior to or after the biggest quake in that dataset; For example if the largest quake occurred on January 5, 1988 at 6 pm, then a quake that occurred in the same region on January 4, 1988 at 5pm would be assigned time_til_Quake = 25.
+  #Takes a dataset as an input and adds on a time_til_Quake variable that contains the number of hours prior to or after the biggest quake in that dataset; For example if the largest quake occurred on January 5, 1988 at 6 pm, then a quake that occurred in the same region on January 4, 1988 at 5pm would be assigned time_til_Quake = 25. It will be negative if it is an aftershock.
   MaxMagRow = FindMaxMagRow(Qdata)
   QuakeYear = Qdata$Year_[[MaxMagRow]]
   QuakeMonth = Qdata$Month_[[MaxMagRow]]
@@ -75,14 +75,20 @@ CreateHours <- function(Qdata){
   time_til_Quake = rep(0, nrow(Qdata))
   HoursToQuake = 0
   for ( i in 1:nrow(Qdata)){
-    if(Qdata$Year_[[i]] == QuakeYear){
-      if(Qdata$Month_[[i]] == QuakeMonth){
-        if(Qdata$Day_[[i]] == QuakeDay){
-          #1. newhour: Get hours from Qdata$Time_of_Quake[[i]]
-          time_til_Quake[i] = QuakeHour-newhour
+     if(Qdata$time_of_Quake[[i]] == QuakeTime){
+            time_til_Quake[i] = 0
+     }
+    else{
+      if(Qdata$Year_[[i]] == QuakeYear){
+        if(Qdata$Month_[[i]] == QuakeMonth){
+          if(Qdata$Day_[[i]] == QuakeDay){
+            #1. newhour: Get hours from Qdata$Time_of_Quake[[i]]
+            time_til_Quake[i] = QuakeHour-newhour
         }
       }
     }
+    }
+    
   }
   
 }
