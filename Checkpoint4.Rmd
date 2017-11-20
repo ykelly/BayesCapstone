@@ -182,7 +182,6 @@ CreateTimeToDays <- function(Qdata){
 
 ```
 
-Summaries:
 ```{r}
 summary(cleanQuakesFin)
 sum(cleanQuakesFin$mag>=7)
