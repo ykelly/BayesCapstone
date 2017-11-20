@@ -28,7 +28,7 @@ cleanQuakes1 <- cbind(cleanQuakes1, Year_)
 cleanQuakes1 <- cbind(cleanQuakes1, Month_)
 cleanQuakes1 <- cbind(cleanQuakes1, Day_)
 
-lapply(cleanQuakes1$time, as.character)
+#lapply(cleanQuakes1$time, as.character)
 
 cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
 time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
@@ -64,8 +64,8 @@ FindMaxMagRow <- function(datasub){
 
 
 
-CreateHours <- function(Qdata){
-  #Takes a dataset as an input and adds on a time_til_Quake variable that contains the number of hours prior to or after the biggest quake in that dataset; For example if the largest quake occurred on January 5, 1988 at 6 pm, then a quake that occurred in the same region on January 4, 1988 at 5pm would be assigned time_til_Quake = 25. It will be negative if it is an aftershock.
+CreateTimeToDays <- function(Qdata){
+  #Takes a dataset as an input and adds on a time_til_Quake variable that contains the number of days prior to or after the biggest quake in that dataset; For example if the largest quake occurred on January 5, 1988 at 6 pm, then a quake that occurred in the same region on January 4, 1988 at 5pm would be assigned time_til_Quake =(1.0417). It will be negative if it is an aftershock.
   MaxMagRow = FindMaxMagRow(Qdata)
   QuakeYear = Qdata$Year_[[MaxMagRow]]
   QuakeMonth = Qdata$Month_[[MaxMagRow]]
@@ -83,8 +83,21 @@ CreateHours <- function(Qdata){
         if(Qdata$Month_[[i]] == QuakeMonth){
           if(Qdata$Day_[[i]] == QuakeDay){
             #1. newhour: Get hours from Qdata$Time_of_Quake[[i]]
-            time_til_Quake[i] = QuakeHour-newhour
-        }
+            time_til_Quake[i] = (QuakeHour-newhour)/24
+          }
+          else{
+            DayDiff = QuakeDay-Qdata$Day_[[i]]
+            if(DayDiff==1){
+              newhour = 24-(hour(time_of_Quake))
+              time_til_Quake[i] = (newhour + QuakeHour)/24
+            }
+            else{ #if not one but still positive?
+              newhour = 24-(hour(time_of_Quake))
+              NewDayDiff = DayDiff-1
+              newhour = newhour + (NewDayDiff*24)
+              time_til_Quake[i] = (newhour + QuakeHour)/24
+            }
+          }
       }
     }
     }
