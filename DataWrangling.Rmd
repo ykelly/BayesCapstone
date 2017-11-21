@@ -32,7 +32,7 @@ cleanQuakes1 <- cbind(cleanQuakes1, Day_)
 
 cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
 time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
-cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake)
+cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake) 
 
 cleanQuakesFin <- cleanQuakes1 %>%
   select(-c(time))
