@@ -93,8 +93,6 @@ map4 <- ggmap(centerPH) + geom_point(data=quakesAbove7, aes(x=longitude, y=latit
   scale_color_gradient(low="lightsalmon", high="darkred")
 
 grid.arrange(map1, map2, map3, map4, ncol=2)
-
-#also color by year
 ```
 
 ```{r}
@@ -185,6 +183,18 @@ CreateTimeToDays <- function(Qdata){
 ```{r}
 summary(cleanQuakesFin)
 sum(cleanQuakesFin$mag>=7)
+```
+
+### Checkpoint 5 starts here
+```{r}
+library(ggplot2)
+ggplot(data=cleanQuakesFin, aes(x=Year_)) + geom_histogram(color="white")
+
+# make a for loop here to get the counts per year and store them in a vector
+# how do i iterate over a column and get the unique values?
+sum(cleanQuakesFin$Year_==1925)
+
+#ggplot(data=cleanQuakesFin, aes(x=Year_)) + geom_bar(stat="identity")
 ```
 
 
