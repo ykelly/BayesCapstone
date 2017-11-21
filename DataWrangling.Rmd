@@ -12,7 +12,7 @@ cleanQuakes = read.csv("cleanQuakes.csv")
 library(dplyr)
 cleanQuakes1 <- cleanQuakes %>%
   select(-c(X.1))
-View(cleanQuakes1)
+#View(cleanQuakes1)
 ```
 
 
@@ -21,23 +21,22 @@ View(cleanQuakes1)
 library(stringr)
 library(lubridate)
 #Creating a year, month, and day columns and adding to cleanQuakes1
-Year_ <- year(cleanQuakes1$time)
-Month_ <- month(cleanQuakes1$time)
-Day_ <- day(cleanQuakes1$time)
-cleanQuakes1 <- cbind(cleanQuakes1, Year_)
-cleanQuakes1 <- cbind(cleanQuakes1, Month_)
-cleanQuakes1 <- cbind(cleanQuakes1, Day_)
+#Year_ <- year(cleanQuakes1$time)
+#Month_ <- month(cleanQuakes1$time)
+#Day_ <- day(cleanQuakes1$time)
+#cleanQuakes1 <- cbind(cleanQuakes1, Year_)
+#cleanQuakes1 <- cbind(cleanQuakes1, Month_)
+#cleanQuakes1 <- cbind(cleanQuakes1, Day_)
 
 #lapply(cleanQuakes1$time, as.character)
 
-cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
-time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
-cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake) 
+#cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
+#time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
+#cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake) 
 
-cleanQuakesFin <- cleanQuakes1 %>%
-  select(-c(time))
+cleanQuakesFin <- cleanQuakes1
 
-View(cleanQuakesFin)
+#View(cleanQuakesFin)
 ```
 
 
@@ -62,51 +61,39 @@ FindMaxMagRow <- function(datasub){
   return(maxrow)
 }
 
+HIQUake1975$time = gsub("T", "", HIQUake1975$time) 
+HIQUake1975$time =gsub("-","",HIQUake1975$time)
+HIQUake1975$time = gsub(":","",HIQUake1975$time)
 
 
 CreateTimeToDays <- function(Qdata){
-  #Takes a dataset as an input and adds on a time_til_Quake variable that contains the number of days prior to or after the biggest quake in that dataset; For example if the largest quake occurred on January 5, 1988 at 6 pm, then a quake that occurred in the same region on January 4, 1988 at 5pm would be assigned time_til_Quake =(1.0417). It will be negative if it is an aftershock.
+  #Time-til-quake will be negative if an aftershock
   MaxMagRow = FindMaxMagRow(Qdata)
-  QuakeYear = Qdata$Year_[[MaxMagRow]]
-  QuakeMonth = Qdata$Month_[[MaxMagRow]]
-  QuakeDay = Qdata$Day_[[MaxMagRow]]
-  QuakeTime = Qdata$time_of_Quake[[MaxMagRow]]
-  QuakeHour = hour(QuakeTime)
+  #QuakeYear = Qdata$Year_[[MaxMagRow]]
+  #QuakeMonth = Qdata$Month_[[MaxMagRow]]
+  #QuakeDay = Qdata$Day_[[MaxMagRow]]
+  #QuakeTime = Qdata$time_of_Quake[[MaxMagRow]]
+  #QuakeHour = hour(QuakeTime)
   time_til_Quake = rep(0, nrow(Qdata))
-  HoursToQuake = 0
   for ( i in 1:nrow(Qdata)){
-     if(Qdata$time_of_Quake[[i]] == QuakeTime){
-            time_til_Quake[i] = 0
-     }
-    else{
-      if(Qdata$Year_[[i]] == QuakeYear){
-        if(Qdata$Month_[[i]] == QuakeMonth){
-          if(Qdata$Day_[[i]] == QuakeDay){
-            #1. newhour: Get hours from Qdata$Time_of_Quake[[i]]
-            time_til_Quake[i] = (QuakeHour-newhour)/24
-          }
-          else{
-            DayDiff = QuakeDay-Qdata$Day_[[i]]
-            if(DayDiff==1){
-              newhour = 24-(hour(time_of_Quake))
-              time_til_Quake[i] = (newhour + QuakeHour)/24
-            }
-            else{ #if not one but still positive?
-              newhour = 24-(hour(time_of_Quake))
-              NewDayDiff = DayDiff-1
-              newhour = newhour + (NewDayDiff*24)
-              time_til_Quake[i] = (newhour + QuakeHour)/24
-            }
-          }
-      }
-    }
-    }
-    
+    time_til_Quake[i] = ymd_hms(Qdata$time[MaxMagRow])-ymd_hms(Qdata$time[i])
   }
-  
+ 
+  return(time_til_Quake)
+
 }
-
-
+#Tests with Hawaii
+HIQUake1975 = cbind(HIQUake1975, "time_til_Quake" = CreateTimeToDays(HIQUake1975))
 
 ```
+
+```{r}
+cleanQuakes1$time = gsub("T","",cleanQuakes1$time)
+cleanQuakes1$time = gsub("-","",cleanQuakes1$time)
+cleanQuakes1$time = gsub(":", "", cleanQuakes1$time)
+
+cleanQuakesFin = cleanQuakes1
+
+```
+
 
