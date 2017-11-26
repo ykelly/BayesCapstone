@@ -33,11 +33,21 @@ library(lubridate)
 #cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
 #time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
 #cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake) 
+```
+
+```{r}
+
+cleanQuakes1 <- cleanQuakes1 %>%
+  select(-c(X))
+
+cleanQuakes1 <- distinct(cleanQuakes1)
 
 cleanQuakesFin <- cleanQuakes1
 
 #View(cleanQuakesFin)
+
 ```
+
 
 
 ```{r}
