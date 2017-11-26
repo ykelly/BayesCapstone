@@ -203,7 +203,44 @@ ggplot(data=cleanQuakesFin, aes(x=mag, y=-depth)) + geom_point() +
 lm(depth ~ mag, data=cleanQuakesFin)
 ```
 
+```{r}
+library(rjags)
+depth_model <- "model{
+  #Data
+  for (i in 1:length(x)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    x[i] ~ dnorm(-58.374+4.424*m[i], tau)
+  }
 
+  #Priors
+  for (j in 1:length(x)) {
+    m[j] ~ dnorm(4.5, 1/4)
+  }
+  
+  tau ~ dgamma(2,0.05)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+depth_jags <- jags.model(textConnection(depth_model),
+                        data = list(x=cleanQuakesFin$depth),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+depth_sim <- coda.samples(depth_jags,
+                        variable.names = c("tau"), n.iter=10000)
+
+#store the samples in a data frame:
+depth_samples <- data.frame(steps=c(1:10000), depth_sim[[1]])
+head(depth_samples)
+```
+
+```{r}
+summary(depth_sim)
+plot(depth_sim)
+```
 
 
 
