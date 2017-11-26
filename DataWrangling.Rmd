@@ -95,6 +95,10 @@ CreateTimeToDays <- function(Qdata){
 #Tests with Hawaii
 HIQUake1975 = cbind(HIQUake1975, "time_til_Quake" = CreateTimeToDays(HIQUake1975))
 
+cleanQuakes1$time_til_Quake = NA
+
+cleanQuakes2 = cbind(cleanQuakes1, "time_til_Quake" = CreateTimeToDays(filter(cleanQuakes1, Year_>2014)))
+
 ```
 
 ```{r}
