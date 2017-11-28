@@ -1,0 +1,60 @@
+---
+title: "Merged Alaska Data"
+author: "Katya Kelly"
+date: "November 10, 2017"
+output: html_document
+---
+```{r}
+library(readr)
+sigQuakesFin <- read.csv("C:/Users/Katya/Documents/Bayesian/sigQuakesFin.csv")
+write.table(sigQuakesFin, file="sigQuakesFin.csv")
+```
+
+```{r}
+AK1929 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1929.csv")
+AK1937 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1937.csv")
+AK1938 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1938.csv")
+AK1939 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1939.csv")
+AK1946 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1946.csv")
+AK1947 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1947.csv")
+AK1948 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1948.csv")
+AK1953 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1953.csv")
+AK1957 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1957.csv")
+AK1964 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1964.csv")
+AK1965 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1965.csv")
+AK1971 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1971.csv")
+AK1972 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1972.csv")
+AK1975 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1975.csv")
+AK1981 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1981.csv")
+AK1986 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1986.csv")
+AK1987_88 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1987_88.csv")
+AK1991 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1991.csv")
+AK1996 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1996.csv")
+AK1999 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK1999.csv")
+AK2001 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2001.csv")
+AK2002 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2002.csv")
+AK2003 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2003.csv")
+AK2007 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2007.csv")
+AK2011 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2011.csv")
+AK2013 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2013.csv")
+AK2014 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2014.csv")
+AK2016 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK2016.csv")
+AK_CAN1970 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK_CAN1970.csv")
+AK_Can2012_13 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AK_Can2012_13.csv")
+AKJan242016 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AKJan242016.csv")
+AKMay41923 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AKMay41923.csv")
+AKOct131926 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/alaskaquakes/AKoct131926.csv")
+
+Alaska_Quakes <- rbind(AK1929, AK1937, AK1938, AK1939, AK1946, AK1947, AK1948, AK1953, AK1957, AK1964, AK1965, AK1971, AK1972,
+                       AK1975, AK1981, AK1986, AK1987_88, AK1991, AK1996, AK1999, AK2001, AK2002, AK2003, AK2007, AK2011,
+                       AK2013, AK2014, AK2016, AK_CAN1970, AK_Can2012_13, AKJan242016, AKMay41923, AKOct131926)
+
+write.table(Alaska_Quakes, file="Alaska_Quakes.csv")
+write.csv(Alaska_Quakes, file="Alaska_Quakes2.csv")
+
+dim(Alaska_Quakes)
+head(Alaska_Quakes)
+names(Alaska_Quakes)
+summary(Alaska_Quakes)
+```
+

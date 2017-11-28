@@ -1,0 +1,34 @@
+---
+title: "Non-Alaska Earthquakes"
+author: "Katya Kelly"
+date: "November 12, 2017"
+output: html_document
+---
+
+```{r}
+library(readr)
+Haw1975 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Haw1975.csv")
+Mex1911 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1911.csv")
+Mex1932 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1932.csv")
+Mex1934 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1934.csv")
+Mex1941 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1941.csv")
+Mex1964 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1964.csv")
+Mex1973 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1973.csv")
+Mex1981 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1981.csv")
+Mex1985_86 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1985_86.csv")
+Mex1995 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1995.csv")
+Mex1997 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1997.csv")
+Mex1999 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex1999.csv")
+Mex2003 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex2003.csv")
+Mex2010 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex2010.csv")
+Mex2012 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Mex2012.csv")
+MexNov161925 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/MexNov161925.csv")
+Nev1954 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Nev1954.csv")
+OR1991 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/OR1991.csv")
+Yellow1959 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/nonalaskaearthquakes/Yellow1959.csv")
+
+NonAK_Quakes <- rbind(Haw1975, Mex1911, Mex1932, Mex1934, Mex1941, Mex1964, Mex1973, Mex1981, Mex1985_86, Mex1995, Mex1997, Mex1999, Mex2003, Mex2010, Mex2012, MexNov161925, Nev1954, OR1991, Yellow1959)
+
+write.csv(NonAK_Quakes, file = "NonAK_Quakes.csv")
+```
+
