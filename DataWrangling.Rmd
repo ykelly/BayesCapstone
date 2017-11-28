@@ -52,9 +52,9 @@ cleanQuakesFin <- cleanQuakes1
 
 ```{r}
 #Create time until big quake or after quake variable
+library(utils)
+HI1975New <- filter(cleanQuakes1, grepl("Hawaii",place))
 
-HIQuake1975 <- filter(cleanQuakes1,  X < 25)
-HIQUake1975 <- filter(HIQuake1975, latitude < 50)
 
 
 FindMaxMagRow <- function(datasub){
@@ -71,9 +71,13 @@ FindMaxMagRow <- function(datasub){
   return(maxrow)
 }
 
-HIQUake1975$time = gsub("T", "", HIQUake1975$time) 
-HIQUake1975$time =gsub("-","",HIQUake1975$time)
-HIQUake1975$time = gsub(":","",HIQUake1975$time)
+
+cleanQuakes1$time = gsub("T","",cleanQuakes1$time)
+cleanQuakes1$time = gsub("-","",cleanQuakes1$time)
+cleanQuakes1$time = gsub(":", "", cleanQuakes1$time)
+
+cleanQuakesFin = cleanQuakes1
+
 
 
 CreateTimeToDays <- function(Qdata){
@@ -93,10 +97,11 @@ CreateTimeToDays <- function(Qdata){
 
 }
 #Tests with Hawaii
-HIQUake1975 = cbind(HIQUake1975, "time_til_Quake" = CreateTimeToDays(HIQUake1975))
+HI1975Fin = cbind(HI1975New, "time_til_Quake" = CreateTimeToDays(HI1975New))
 
-cleanQuakes1$time_til_Quake = NA
-
+#cleanQuakes1$time_til_Quake = NA
+CreateTimeToDays(filter(cleanQuakes1, Year_>2014))
+View(cleanQuakes1)
 cleanQuakes2 = cbind(cleanQuakes1, "time_til_Quake" = CreateTimeToDays(filter(cleanQuakes1, Year_>2014)))
 
 ```
