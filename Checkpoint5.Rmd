@@ -335,5 +335,108 @@ plot(mag_dep_sim)
 This model predicts a slightly higher average magnitude of 5.15, with large variance and a slight negative correlation between depth and magnitude.
 
 
+```{r}
+#Creating Region based dataset
+
+cleanQuakesFin$region = cleanQuakesFin$place
+cleanQuakesFin$region = as.character(cleanQuakesFin$region)
+
+createRegion <- function(dataset){
+  dataset <- within(dataset, region[grepl("Hawaii", dataset$region)]<-"Hawaii")
+  dataset <- within(dataset, region[grepl("Alaska", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Canada", dataset$region)]<- "Canada")
+  dataset <- within(dataset, region[grepl("MX", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Mexico", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("California", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Guatemala", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("El Salvador", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Venezuela", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("CA", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Nicaragua", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Honduras", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Oregon", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Washington", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Russia", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Revilla", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Nevada", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("NV", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Wyoming", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Montana", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Aleutian", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Ocean", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Bristol", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Bering", dataset$region)]<- "Alaska")
+}
+
+cleanQuakesFin <- createRegion(cleanQuakesFin)
+
+
+```
+
+
+
+### Question: Another way to predict magnitude- by region (categorical)
+
+
+```{r}
+regionClean <- cleanQuakesFin
+
+
+cat_regionMatrix <- model.matrix(id ~ region, regionClean)
+colnames(cat_regionMatrix)[1] <- c("Intercept")
+
+regionClean <- cbind(regionClean,cat_regionMatrix)
+
+regionClean <- regionClean %>%
+  select(-c((Intercept)))
+```
+
+
+
+
+```{r}
+# Rjags for magnitude by region
+
+#depthAbove1Quakes <- filter(cleanQuakesFin, depth > 1) # this helped with earthquakes on the surface with tiny depth
+
+mag_region_model <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0+beta1*d[i], tau0 + sqrt((tau1)^2)*d[i])
+  }
+
+  #Priors
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  tau0 ~ dnorm(-10, 1)
+  tau1 ~ dnorm(-10, 1)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_region_jags <- jags.model(textConnection(mag_region_model),
+                        data = list(M=depthAbove1Quakes$mag, d=(depthAbove1Quakes$depth)),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_region_sim <- coda.samples(mag_region_jags,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_region_samples <- data.frame(steps=c(1:10000), mag_region_sim[[1]])
+head(mag_region_samples)
+
+
+```
+
+
+```{r}
+summary(mag_dep_sim)
+plot(mag_dep_sim)
+```
 
 
