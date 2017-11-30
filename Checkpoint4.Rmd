@@ -189,57 +189,129 @@ sum(cleanQuakesFin$mag>=7)
 ```{r}
 library(ggplot2)
 library(lubridate)
-ggplot(data=quakesSince1950, aes(x = hour(hms(time_of_Quake)))) + geom_histogram(color="white") +
-  xlab("Hour of Day") + ylab("Number of Earthquakes")
+# Frequency of large earthquakes per year
+ggplot(data=quakesAbove7, aes(x = Year_)) + geom_histogram(binwidth = 1, color="white") +
+  xlab("Year") + ylab("Number of Large Earthquakes")
 
-# make a for loop here to get the counts per year and store them in a vector
-# how do i iterate over a column and get the unique values?
-sum(cleanQuakesFin$Year_==1925)
+# Intensity of large earthquakes per year
+ggplot(data=quakesAbove7, aes(x = Year_, y = mag)) + geom_point() +
+  xlab("Year") + ylab("Magnitude of Earthquake")
 
-#ggplot(data=cleanQuakesFin, aes(x=Year_)) + geom_bar(stat="identity")
+# magnitude by depth
+ggplot(data=cleanQuakesFin, aes(x=depth, y=mag)) + geom_point() + 
+  geom_abline(slope = -0.0003652, intercept = 1.6395543, col = "blue")
+lm(log(mag) ~ depth, data=cleanQuakesFin)
 
-ggplot(data=cleanQuakesFin, aes(x=mag, y=-depth)) + geom_point() + 
-  geom_abline(slope = 4.424, intercept = -58.374, col = "blue")
-lm(depth ~ mag, data=cleanQuakesFin)
+# Number of large earthquakes in 1957 (8) - unusually high or not?
+sum(cleanQuakesFin$Year_ == 1957 & cleanQuakesFin$mag >= 7)
+
 ```
 
-```{r}
-library(rjags)
-depth_model <- "model{
-  #Data
-  for (i in 1:length(x)) {
-    #Note: dnorm in rjags takes the precision, not st. dev.
-    x[i] ~ dnorm(-58.374+4.424*m[i], tau)
-  }
+#### Question: Can we predict the yearly rate of large earthquakes (above magnitude 7) and determine whether 8 large earthquakes in the year 1957 was significant?
 
-  #Priors
-  for (j in 1:length(x)) {
-    m[j] ~ dnorm(4.5, 1/4)
+$\lambda$ = rate of large earthquakes (number/year)
+\
+$X_i$ = longitude of earthquake $i$
+\
+$Y_i$ = latitude of earthquake $i$
+\
+$N$ = total number of large earthquakes from 1900-2017 in North America
+\
+\
+Models:
+\
+$$N|\lambda \sim Pois(sqrt((X_i + Y_i)^2)\lambda)$$
+$$\lambda \sim Gamma(1,2)$$
+
+\
+\
+
+
+```{r}
+
+# Rjags for rate of large earthquakes
+
+library(rjags)
+rate_model <- "model{
+  #Data
+    #Note: dnorm in rjags takes the precision, not st. dev.
+
+  N ~ dpois(mu)
+  for (i in 1:length(N)) {
+    mu = (sqrt((X[i]+Y[i])^2))*lambda
   }
   
-  tau ~ dgamma(2,0.05)
+
+
+  #Priors
+  
+  lambda ~ dgamma(1,2)
   
 }"
 
 #set up an algorithm to simulate the posterior by
 #combining the model (nfl_model) and data (sports)
 #set the random number seed
-depth_jags <- jags.model(textConnection(depth_model),
-                        data = list(x=cleanQuakesFin$depth),
+rate_jags <- jags.model(textConnection(rate_model),
+                        data = list(N=nrow(quakesAbove7), X=quakesAbove7$longitude, Y=quakesAbove7$latitude),
                         inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
 
 #simulate a sample from the posterior
-depth_sim <- coda.samples(depth_jags,
-                        variable.names = c("tau"), n.iter=10000)
+rate_sim <- coda.samples(rate_jags,
+                        variable.names = c("lambda"), n.iter=10000)
 
 #store the samples in a data frame:
-depth_samples <- data.frame(steps=c(1:10000), depth_sim[[1]])
-head(depth_samples)
+rate_samples <- data.frame(steps=c(1:10000), rate_sim[[1]])
+head(rate_samples)
+
 ```
 
 ```{r}
-summary(depth_sim)
-plot(depth_sim)
+plot(rate_sim)
+summary(rate_sim)
+```
+
+From this output, we can see that our model predicts there to be about 0.65 significant earthquakes per year on average. This leads us to believe that the year 1957, which had 8 significant earthquakes, was an extreme observation. We could further investigate this particular year to try to explain the large number of significant earthquakes.
+
+```{r}
+# Rjags for magnitude by depth
+
+library(rjags)
+mag_model <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0+beta1*d[i], tau0 + tau1*sqrt(d[i]))
+  }
+
+  #Priors
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  tau0 ~ dgamma(10, 1)
+  tau1 ~ dgamma(10, 1)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_jags <- jags.model(textConnection(mag_model),
+                        data = list(M=cleanQuakesFin$mag, d=cleanQuakesFin$depth),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_sim <- coda.samples(mag_jags,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_samples <- data.frame(steps=c(1:10000), mag_sim[[1]])
+head(mag_samples)
+```
+
+```{r}
+summary(mag_sim)
+plot(mag_sim)
 ```
 
 

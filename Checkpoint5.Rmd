@@ -1,0 +1,339 @@
+---
+title: "Checkpoint 5"
+author: "Katya Kelly & Katja McKiernan"
+date: "November 29, 2017"
+output: html_document
+---
+
+We both worked equally on finding questions, building the models, researching models and priors, and pair programming.
+/
+```{r}
+cleanQuakes = read.csv("cleanQuakes.csv")
+
+library(dplyr)
+cleanQuakes1 <- cleanQuakes %>%
+  select(-c(X.1))
+```
+
+```{r}
+library(stringr)
+library(lubridate)
+#Creating a year, month, and day columns and adding to cleanQuakes1
+Year_ <- year(cleanQuakes1$time)
+Month_ <- month(cleanQuakes1$time)
+Day_ <- day(cleanQuakes1$time)
+cleanQuakes1 <- cbind(cleanQuakes1, Year_)
+cleanQuakes1 <- cbind(cleanQuakes1, Month_)
+cleanQuakes1 <- cbind(cleanQuakes1, Day_)
+
+#lapply(cleanQuakes1$time, as.character)
+
+cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
+time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
+cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake)
+
+cleanQuakesFin <- cleanQuakes1 %>%
+  select(-c(time))
+```
+
+```{r}
+library(dplyr)
+quakesAbove7 <- filter(cleanQuakesFin, mag >= 7)
+quakesSince1950 <- filter(cleanQuakesFin, Year_ >= 1950)
+quakesAbove7Since1950 <- filter(cleanQuakesFin, Year_ >=1950, mag >= 7)
+```
+
+
+### Question: Can we predict the yearly rate of large earthquakes (above magnitude 7) and determine whether 8 large earthquakes in the year 1957 was significant?
+
+```{r}
+library(ggplot2)
+# Frequency of large earthquakes per year
+ggplot(data=quakesAbove7, aes(x = Year_)) + geom_histogram(binwidth = 1, color="white") +
+  xlab("Year") + ylab("Number of Large Earthquakes")
+
+# Number of large earthquakes in 1957 (8) - unusually high or not?
+sum(cleanQuakesFin$Year_ == 1957 & cleanQuakesFin$mag >= 7)
+
+```
+
+Notation:
+$\lambda$ = rate of large earthquakes (number/year)
+\
+$X_i$ = longitude of earthquake $i$
+\
+$Y_i$ = latitude of earthquake $i$
+\
+$N$ = total number of large earthquakes from 1900-2017 in North America
+\
+\
+Models:
+\
+Model 1:
+$$N|\lambda \sim Pois(sqrt((X_i)^2)\lambda)$$
+$$\lambda \sim Gamma(1,2)$$
+\
+Model 2:
+$$N|\lambda \sim Pois(sqrt((Y_i)^2\lambda)$$
+$$\lambda \sim Gamma(1,2)$$
+\
+Model 3:
+$$N|\lambda \sim Pois(sqrt((X_i + Y_i)^2)\lambda)$$
+$$\lambda \sim Gamma(1,2)$$
+
+\
+\
+```{r}
+library(rjags)
+rate_long_model <- "model{
+  #Data
+    #Note: dnorm in rjags takes the precision, not st. dev.
+
+  N ~ dpois(mu)
+  for (i in 1:length(N)) {
+    mu = (sqrt((X[i])^2))*lambda
+  }
+  
+
+
+  #Priors
+  
+  lambda ~ dgamma(1,2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+rate_long_jags <- jags.model(textConnection(rate_long_model),
+                        data = list(N=nrow(quakesAbove7), X=quakesAbove7$longitude),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+rate_long_sim <- coda.samples(rate_long_jags,
+                        variable.names = c("lambda"), n.iter=10000)
+
+#store the samples in a data frame:
+rate_long_samples <- data.frame(steps=c(1:10000), rate_long_sim[[1]])
+head(rate_long_samples)
+
+plot(rate_long_sim)
+summary(rate_long_sim)
+```
+
+Based on just longitude, our model predicts there to be about 0.57 earthquakes per year on average. This is slightly fewer than our joint model that uses both latitude and longitude, and significantly fewer than our model with just latitude.
+
+```{r}
+rate_lat_model <- "model{
+  #Data
+    #Note: dnorm in rjags takes the precision, not st. dev.
+
+  N ~ dpois(mu)
+  for (i in 1:length(N)) {
+    mu = sqrt(Y[i]^2)*lambda
+  }
+  
+
+
+  #Priors
+  
+  lambda ~ dgamma(1,2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+rate_lat_jags <- jags.model(textConnection(rate_lat_model),
+                        data = list(N=nrow(quakesAbove7), Y=quakesAbove7$latitude),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+rate_lat_sim <- coda.samples(rate_lat_jags,
+                        variable.names = c("lambda"), n.iter=10000)
+
+#store the samples in a data frame:
+rate_lat_samples <- data.frame(steps=c(1:10000), rate_lat_sim[[1]])
+head(rate_lat_samples)
+
+plot(rate_lat_sim)
+summary(rate_lat_sim)
+```
+
+Based on this model that uses only latitude, we predict there to be about 4.17 large earthquakes per year. This is a quite large prediction in comparison to our other two models. We hypothesize that this is due to the large number of earthquakes that occur in the Aleutian Islands in Alaska, which lie in very restricted range of latitudes. Earthquakes fall on a larger range of longitudes.
+
+```{r}
+# Rjags for rate of large earthquakes
+
+
+rate_model <- "model{
+  #Data
+    #Note: dnorm in rjags takes the precision, not st. dev.
+
+  N ~ dpois(mu)
+  for (i in 1:length(N)) {
+    mu = (sqrt((X[i]+Y[i])^2))*lambda
+  }
+  
+
+
+  #Priors
+  
+  lambda ~ dgamma(1,2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+rate_jags <- jags.model(textConnection(rate_model),
+                        data = list(N=nrow(quakesAbove7), X=quakesAbove7$longitude, Y=quakesAbove7$latitude),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+rate_sim <- coda.samples(rate_jags,
+                        variable.names = c("lambda"), n.iter=10000)
+
+#store the samples in a data frame:
+rate_samples <- data.frame(steps=c(1:10000), rate_sim[[1]])
+head(rate_samples)
+
+```
+
+
+```{r}
+plot(rate_sim)
+summary(rate_sim)
+```
+
+From this output, we can see that our joint model predicts there to be about 0.65 significant earthquakes per year on average. This leads us to believe that the year 1957, which had 8 significant earthquakes, was an extreme observation. We could further investigate this particular year to try to explain the large number of significant earthquakes. We believe this to be a more accurate model than our previous two, particularly than our model using only latitude.
+
+
+### Question: How can we predict the magnitude of an earthquake?
+
+```{r}
+#magnitude by lat/long
+ggplot(data=cleanQuakesFin, aes(x=sqrt((latitude + longitude)^2), y=mag)) + geom_point()
+
+# magnitude by depth
+ggplot(data=cleanQuakesFin, aes(x=depth, y=mag)) + geom_point()
+```
+
+Notation:
+$M_i$ = magnitude of earthquake $i$
+\
+$X_i$ = longitude of earthquake $i$
+\
+$Y_i$ = latitude of earthquake $i$
+\
+$d_i$ = depth of earthquake $i$
+
+\
+\
+Models:
+\
+Model 1:
+$$M_i = \beta_0 + \beta_1X_i+\beta_2Y_i+\epsilon_i$$
+$$M_i|\beta_0, \beta_1, \beta_2, \tau \sim N(\beta_0 + \beta_1X_i+\beta_2Y_i, \tau^{-1})$$
+$$\beta_k \sim N(0,100^2)$$
+$$\tau \sim Gamma(2,2)$$
+\
+Model 2:
+$$M_i = \beta_0 + \beta_1d_i+\epsilon_i$$
+$$M_i|\beta_0, \beta_1, \beta_2, \tau_0, \tau_1 \sim N(\beta_0 + \beta_1d_i, (\tau_0+\tau_1d_i)^{-1})$$
+$$\beta_k \sim N(0,100^2)$$
+$$\tau_k \sim N(-10,1^2)$$
+
+
+\
+\
+
+```{r}
+# Rjags for magnitude by location (lat/long)
+
+mag_loc_model <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0+beta1*X[i]+beta2*Y[i], tau)
+  }
+
+  #Priors
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  beta2 ~ dnorm(0, 1/100^2)
+  tau ~ dgamma(2, 2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_loc_jags <- jags.model(textConnection(mag_loc_model),
+                        data = list(M=cleanQuakesFin$mag, X=cleanQuakesFin$longitude, Y=cleanQuakesFin$latitude),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_loc_sim <- coda.samples(mag_loc_jags,
+                        variable.names = c("tau", "beta0", "beta1", "beta2"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_loc_samples <- data.frame(steps=c(1:10000), mag_loc_sim[[1]])
+head(mag_loc_samples)
+```
+
+```{r}
+plot(mag_loc_sim)
+summary(mag_loc_sim)
+```
+
+What we believe this model is telling us is that the expected magnitude of an earthquake is a 5.04, with very little influence from either latitude or longitude.
+
+```{r}
+# Rjags for magnitude by depth
+
+depthAbove1Quakes <- filter(cleanQuakesFin, depth > 1) # this helped with earthquakes on the surface with tiny depth
+
+mag_dep_model <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0+beta1*d[i], tau0 + sqrt((tau1)^2)*d[i])
+  }
+
+  #Priors
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  tau0 ~ dnorm(-10, 1)
+  tau1 ~ dnorm(-10, 1)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_dep_jags <- jags.model(textConnection(mag_dep_model),
+                        data = list(M=depthAbove1Quakes$mag, d=(depthAbove1Quakes$depth)),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_dep_sim <- coda.samples(mag_dep_jags,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_dep_samples <- data.frame(steps=c(1:10000), mag_dep_sim[[1]])
+head(mag_dep_samples)
+```
+
+```{r}
+summary(mag_dep_sim)
+plot(mag_dep_sim)
+```
+
+This model predicts a slightly higher average magnitude of 5.15, with large variance and a slight negative correlation between depth and magnitude.
+
+
+
+
