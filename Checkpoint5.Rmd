@@ -70,15 +70,15 @@ $N$ = total number of large earthquakes from 1900-2017 in North America
 Models:
 \
 Model 1:
-$$N|\lambda \sim Pois(sqrt((X_i)^2)\lambda)$$
+$$N|\lambda \sim Pois(\sqrt((X_i)^2)\lambda)$$
 $$\lambda \sim Gamma(1,2)$$
 \
 Model 2:
-$$N|\lambda \sim Pois(sqrt((Y_i)^2\lambda)$$
+$$N|\lambda \sim Pois(\sqrt((Y_i)^2\lambda)$$
 $$\lambda \sim Gamma(1,2)$$
 \
 Model 3:
-$$N|\lambda \sim Pois(sqrt((X_i + Y_i)^2)\lambda)$$
+$$N|\lambda \sim Pois(\sqrt((X_i + Y_i)^2)\lambda)$$
 $$\lambda \sim Gamma(1,2)$$
 
 \
