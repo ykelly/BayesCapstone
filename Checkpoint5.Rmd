@@ -439,4 +439,71 @@ summary(mag_dep_sim)
 plot(mag_dep_sim)
 ```
 
+#Checkpoint 6
+
+```{r}
+# Cutting longitude into 12 categorical ranges
+range(quakesAbove7$longitude)
+longCategories <- cut(quakesAbove7$longitude, 12)
+head(longCategories)
+quakesAbove7$LongCat = longCategories
+
+# Grouping earthquakes by year and longitude
+library(dplyr)
+groupedQuakes <- quakesAbove7 %>%
+  group_by(Year_, LongCat) %>%
+  summarise(medianMag = median(mag), count = n())
+groupedQuakes
+```
+
+make a column/vector of mean lambda[i] values from this rjags; then use those values to make lambda [i] in the rjags exponential version; aka different rates of quakes for different longitude groups &/or year groups
+
+
+```{r}
+# Rjags for Poisson regression - predicting rate of earthquakes per year lambda
+
+library(rjags)
+pois_rate_model <- "model{
+  #Data
+  for (i in 1:length(numQuakes)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    numQuakes[i] ~ dpois(lambda[i])
+    log(lambda[i]) = beta0 + beta1*lon[i] + beta2*year[i]
+  }
+
+  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
+  # is affected by our chosen variables
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  beta2 ~ dnorm(0, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+pois_rate_jags <- jags.model(textConnection(pois_rate_model),
+                        data = list(numQuakes = groupedQuakes$count, lon = groupedQuakes$LongCat, year = groupedQuakes$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+pois_rate_sim <- coda.samples(pois_rate_jags,
+                        variable.names = c("beta0", "beta1", "beta2", "lambda"), n.iter=10000)
+
+#store the samples in a data frame:
+pois_rate_samples <- data.frame(steps=c(1:10000), pois_rate_sim[[1]])
+head(pois_rate_samples)
+
+plot(pois_rate_sim)
+summary(pois_rate_sim)
+```
+
+
+
+
+
+
+
+
 
