@@ -442,29 +442,28 @@ plot(mag_dep_sim)
 #Checkpoint 6
 
 ```{r}
-# Plot number of earthquakes by year
-#library(ggplot2)
-#ggplot(data=groupedQuakes, aes(x=))
+
 
 # Adding years with 0 large earthquakes into data so models are more accurate
 missingYears7 <- c(1900:2016)[!(c(1900:2016) %in% quakesAbove7$Year_)]
 missingYearsCount7 <- rep(0, length(missingYears7))
 
-quakes116Above7 <- data.frame(Year_ = missingYears7, X = rep(NA, length(missingYears7)), latitude = rep(NA, length(missingYears7)), longitude = rep(NA, length(missingYears7)), depth = rep(NA, length(missingYears7)), mag = rep(NA, length(missingYears7)), magType = rep(NA, length(missingYears7)), id = rep(NA, length(missingYears7)), place = rep(NA, length(missingYears7)), type = rep(NA, length(missingYears7)), locationSource = rep(NA, length(missingYears7)), magSource = rep(NA, length(missingYears7)), Month_ = rep(NA, length(missingYears7)), Day_ = rep(NA, length(missingYears7)), time_of_Quake = rep(NA, length(missingYears7)), LongCat = rep(NA, length(missingYears7)))  
+quakes116Above7 <- data.frame(Year_ = missingYears7, X = rep(NA, length(missingYears7)), latitude = rep(NA, length(missingYears7)), longitude = rep(NA, length(missingYears7)), depth = rep(NA, length(missingYears7)), mag = rep(0, length(missingYears7)), magType = rep(NA, length(missingYears7)), id = rep(NA, length(missingYears7)), place = rep(NA, length(missingYears7)), type = rep(NA, length(missingYears7)), locationSource = rep(NA, length(missingYears7)), magSource = rep(NA, length(missingYears7)), Month_ = rep(NA, length(missingYears7)), Day_ = rep(NA, length(missingYears7)), time_of_Quake = rep(NA, length(missingYears7)), LongCat = rep("(0,1]", length(missingYears7)))  
 
 quakes116Above7Fin <-rbind(quakes116Above7, quakesAbove7)
 
-# Cutting longitude into 12 categorical ranges
-longCategories <- cut(quakesAbove7$longitude, c(-180, -160, -140, -120, -100, -80, 160, 180))
+# Cutting longitude into 12 categorical ranges - The (0, 1] interval is for years with no large earthquakes
+longCategories <- cut(quakesAbove7$longitude, c(-180, -160, -140, -120, -100, -80, 0, 1, 160, 180))
 head(longCategories)
 quakesAbove7$LongCat = longCategories
 
-# Grouping earthquakes by year and longitude
+# Grouping earthquakes by year and longitude category
 library(dplyr)
 groupedQuakes116 <- quakes116Above7Fin %>%
   group_by(Year_, LongCat) %>%
   summarise(medianMag = median(mag), count = n())
 
+# Resetting the count to 0 for years without large earthquakes
 for(i in 1:nrow(groupedQuakes116)){
   if (groupedQuakes116$Year_[i] %in% missingYears7){
   groupedQuakes116$count[i] = 0
@@ -472,9 +471,17 @@ for(i in 1:nrow(groupedQuakes116)){
 }
 ```
 
+```{r}
+# Plot number of earthquakes by year
+library(ggplot2)
+ggplot(data=groupedQuakes116, aes(x=Year_, y=count)) + geom_point()
+```
+
+### Question - Can we use our data to estimate the rate of earthquakes per year?
+$$$$
 
 ```{r}
-# Rjags for Poisson regression - predicting rate of earthquakes per year lambda
+# Rjags for Poisson regression - predicting rate of earthquakes per year, lambda
 
 library(rjags)
 pois_rate_model <- "model{
@@ -490,7 +497,7 @@ pois_rate_model <- "model{
   
   beta0 ~ dnorm(0, 1/100^2)
   beta1[1] <- 0
-  for (i in 2:12) {
+  for (i in 2:9) {
     beta1[i] ~ dnorm(0, 1/100^2)
   }
   beta2 ~ dnorm(0, 1/100^2)
@@ -501,7 +508,7 @@ pois_rate_model <- "model{
 #combining the model (nfl_model) and data (sports)
 #set the random number seed
 pois_rate_jags <- jags.model(textConnection(pois_rate_model),
-                        data = list(numQuakes = groupedQuakes$count, lon = groupedQuakes$LongCat, year = groupedQuakes$Year_),
+                        data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
                         inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
 
 #simulate a sample from the posterior
