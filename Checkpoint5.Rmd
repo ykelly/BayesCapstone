@@ -475,13 +475,28 @@ for(i in 1:nrow(groupedQuakes116)){
 # Plot number of earthquakes by year
 library(ggplot2)
 ggplot(data=groupedQuakes116, aes(x=Year_, y=count)) + geom_point()
+
+# Plot number of earthquakes by longitude group
+ggplot(data=groupedQuakes116, aes(x=LongCat, y=count)) + geom_point()
 ```
 
 ### Question - Can we use our data to estimate the rate of earthquakes per year?
-$$$$
+$N_{i}$ - the number of large earthquakes in row $i$ (rows sorted by year & longitude range)
+\
+$\lambda_{i}$ - the rate of large earthquakes per longitude range per year in row $i$
+\
+$\txt{lon}_{i}$ - the longitude range of the earthquakes that happened in row $i$
+\
+$\txt{year}_{i}$ - the year in which the earthquakes in row $i$ occurred
+\
+Models:
+
+$$N_{i} \sim Pois(\lambda_{i})$$
+$$\log(\lambda_{i}) = \beta_0 + \beta_1*\txt{lon}_i + \beta_2*\txt{year}_i$$
+$$\beta_k \sim N(0, 100^2)$$
 
 ```{r}
-# Rjags for Poisson regression - predicting rate of earthquakes per year, lambda
+# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
 
 library(rjags)
 pois_rate_model <- "model{
