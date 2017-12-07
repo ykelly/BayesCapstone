@@ -442,21 +442,35 @@ plot(mag_dep_sim)
 #Checkpoint 6
 
 ```{r}
+# Plot number of earthquakes by year
+#library(ggplot2)
+#ggplot(data=groupedQuakes, aes(x=))
+
+# Adding years with 0 large earthquakes into data so models are more accurate
+missingYears7 <- c(1900:2016)[!(c(1900:2016) %in% quakesAbove7$Year_)]
+missingYearsCount7 <- rep(0, length(missingYears7))
+
+quakes116Above7 <- data.frame(Year_ = missingYears7, X = rep(NA, length(missingYears7)), latitude = rep(NA, length(missingYears7)), longitude = rep(NA, length(missingYears7)), depth = rep(NA, length(missingYears7)), mag = rep(NA, length(missingYears7)), magType = rep(NA, length(missingYears7)), id = rep(NA, length(missingYears7)), place = rep(NA, length(missingYears7)), type = rep(NA, length(missingYears7)), locationSource = rep(NA, length(missingYears7)), magSource = rep(NA, length(missingYears7)), Month_ = rep(NA, length(missingYears7)), Day_ = rep(NA, length(missingYears7)), time_of_Quake = rep(NA, length(missingYears7)), LongCat = rep(NA, length(missingYears7)))  
+
+quakes116Above7Fin <-rbind(quakes116Above7, quakesAbove7)
+
 # Cutting longitude into 12 categorical ranges
-range(quakesAbove7$longitude)
-longCategories <- cut(quakesAbove7$longitude, 12)
+longCategories <- cut(quakesAbove7$longitude, c(-180, -160, -140, -120, -100, -80, 160, 180))
 head(longCategories)
 quakesAbove7$LongCat = longCategories
 
 # Grouping earthquakes by year and longitude
 library(dplyr)
-groupedQuakes <- quakesAbove7 %>%
+groupedQuakes116 <- quakes116Above7Fin %>%
   group_by(Year_, LongCat) %>%
   summarise(medianMag = median(mag), count = n())
-groupedQuakes
-```
 
-make a column/vector of mean lambda[i] values from this rjags; then use those values to make lambda [i] in the rjags exponential version; aka different rates of quakes for different longitude groups &/or year groups
+for(i in 1:nrow(groupedQuakes116)){
+  if (groupedQuakes116$Year_[i] %in% missingYears7){
+  groupedQuakes116$count[i] = 0
+  }
+}
+```
 
 
 ```{r}
@@ -468,14 +482,17 @@ pois_rate_model <- "model{
   for (i in 1:length(numQuakes)) {
     #Note: dnorm in rjags takes the precision, not st. dev.
     numQuakes[i] ~ dpois(lambda[i])
-    log(lambda[i]) = beta0 + beta1*lon[i] + beta2*year[i]
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i]
   }
 
   #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
   # is affected by our chosen variables
   
   beta0 ~ dnorm(0, 1/100^2)
-  beta1 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  for (i in 2:12) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+  }
   beta2 ~ dnorm(0, 1/100^2)
   
 }"
@@ -489,7 +506,7 @@ pois_rate_jags <- jags.model(textConnection(pois_rate_model),
 
 #simulate a sample from the posterior
 pois_rate_sim <- coda.samples(pois_rate_jags,
-                        variable.names = c("beta0", "beta1", "beta2", "lambda"), n.iter=10000)
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=10000)
 
 #store the samples in a data frame:
 pois_rate_samples <- data.frame(steps=c(1:10000), pois_rate_sim[[1]])
