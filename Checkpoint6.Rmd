@@ -123,18 +123,19 @@ $rHI_i$ - indicator of whether or not earthquake $i$ was in the Hawaii region
 $rUS_i$ - indicator of whether or not earthquake $i$ was in the US region
 \
 Model:
-$$M_i|\beta_0, \beta_1, \beta_2, \beta_3, \beta_4, \tau_0, \tau_1, \tau_2, \tau_3, \tau_4 \sim N(\beta_0 + \beta_1*rCan_i + \beta_2*rMex_i + \beta_3*rHI_i + \beta_3*rUS_i, (\tau_0 + \tau_1*rCan_i + \tau_2*rMex_i + \tau_3*rHI_i + \tau_4*rUS_i)^{-1}$$
-$$\beta_k, \tau_k \sim N(0, 100^2)$$
+$$M_i|\beta_0, \beta_1, \beta_2, \beta_3, \beta_4, \tau_0, \tau_1, \tau_2, \tau_3, \tau_4 \sim N(\beta_0 + \beta_1*rCan_i + \beta_2*rMex_i + \beta_3*rHI_i + \beta_3*rUS_i, (\tau_0 + \tau_1*(rCan_i + rMex_i + rHI_i + rUS_i)^{-1}$$
+$$\beta_k \sim N(0, 100^2)$$
+$$\tau_k \sim N(10, 100^2)$$
 
 ```{r}
-# Rjags for magnitude by region (categorical)
+# Rjags for magnitude by region (indicator)
 
 library(rjags)
 mag_region_model <- "model{
   #Data
   for (i in 1:length(M)) {
     #Note: dnorm in rjags takes the precision, not st. dev.
-    M[i] ~ dnorm(beta0 + beta1*rCan[i] + beta2*rMex[i] + beta3*rHI[i] + beta4*rUS[i], tau0 + tau1*rCan[i] + tau2*rMex[i] + tau3*rHI[i] + tau4*rUS[i])
+    M[i] ~ dnorm(beta0 + beta1*rCan[i] + beta2*rMex[i] + beta3*rHI[i] + beta4*rUS[i], tau0 + tau1*(rCan[i] + rMex[i] + rHI[i] + rUS[i]))
   }
 
   #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
@@ -147,9 +148,6 @@ mag_region_model <- "model{
 
   tau0 ~ dnorm(10, 1/100^2)
   tau1 ~ dnorm(10, 1/100^2)
-  tau2 ~ dnorm(10, 1/100^2)
-  tau3 ~ dnorm(10, 1/100^2)
-  tau4 ~ dnorm(10, 1/100^2)
   
 }"
 
@@ -157,12 +155,12 @@ mag_region_model <- "model{
 #combining the model (nfl_model) and data (sports)
 #set the random number seed
 mag_region_jags <- jags.model(textConnection(mag_region_model),
-                        data = list(M=regionClean$mag, rCan=regionClean$regionCanada, rMex=regionClean$regionMexico, rHI = regionClean$regionHawaii, rUS = regionClean$regionUS),
+                        data = list(M=log(regionClean$mag), rCan=regionClean$regionCanada, rMex=regionClean$regionMexico, rHI = regionClean$regionHawaii, rUS = regionClean$regionUS),
                         inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
 
 #simulate a sample from the posterior
 mag_region_sim <- coda.samples(mag_region_jags,
-                        variable.names = c("tau0", "tau1", "tau2", "tau3", "tau4", "beta0", "beta1", "beta2", "beta3", "beta4"), n.iter=10000)
+                        variable.names = c("tau0", "tau1", "beta0", "beta1", "beta2", "beta3", "beta4"), n.iter=10000)
 
 #store the samples in a data frame:
 mag_region_samples <- data.frame(steps=c(1:10000), mag_region_sim[[1]])
@@ -176,6 +174,54 @@ plot(mag_region_sim)
 ```
 
 With Alaska as our reference region, we believe this model is telling us that Hawaii, Mexico, and Canada tend to have earthquakes with slightly smaller magnitude on average, while the continental US tends to have slightly larger earthquakes. This might be surprising at first because Alaska has the most large earthquakes (above magnitude 7), but it also has many more small earthquakes, bringing the total percentage of large earthquakes down.
+
+
+```{r}
+# Rjags for magnitude by region (categorical) - currently not working!
+
+library(rjags)
+mag_region_modelC <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0 + beta1[region[i]], tau0 + tau1[region[i]])
+  }
+
+  #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  tau[1] <- 0
+  for (i in 2:5) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+    tau1[i] ~ dnorm(10, 1/100^2)
+  }
+
+  tau0 ~ dnorm(10, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_region_jagsC <- jags.model(textConnection(mag_region_modelC),
+                        data = list(M=log(regionClean$mag), region=regionClean$region),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_region_simC <- coda.samples(mag_region_jagsC,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_region_samplesC <- data.frame(steps=c(1:10000), mag_region_simC[[1]])
+head(mag_region_samplesC)
+```
+
+
+```{r}
+summary(mag_region_sim)
+plot(mag_region_sim)
+```
 
 ```{r}
 # Cutting longitude into 9 categorical ranges of width 20 degrees - The (0, 1] interval is for years with no large earthquakes
@@ -224,14 +270,15 @@ $lon_{i}$ - the longitude range of the earthquakes that happened in row $i$
 \
 $year_{i}$ - the year in which the earthquakes in row $i$ occurred
 \
-Models:
+Model 1:
 
 $$N_{i} \sim Pois(\lambda_{i})$$
-$$\log(\lambda_{i}) = \beta_0 + \beta_1*lon_i + \beta_2*year_i$$
+$$\log(\lambda_{i}) = \beta_0 + \beta_{i1} + \beta_{2}*year_i$$
 $$\beta_k \sim N(0, 100^2)$$
 
 ```{r}
 # Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
+# Model for which only the intercept varies by longitude range
 
 pois_rate_model <- "model{
   #Data
@@ -262,17 +309,70 @@ pois_rate_jags <- jags.model(textConnection(pois_rate_model),
 
 #simulate a sample from the posterior
 pois_rate_sim <- coda.samples(pois_rate_jags,
-                        variable.names = c("beta0", "beta1", "beta2"), n.iter=10000)
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=500000)
 
 #store the samples in a data frame:
-pois_rate_samples <- data.frame(steps=c(1:10000), pois_rate_sim[[1]])
+pois_rate_samples <- data.frame(steps=c(1:500000), pois_rate_sim[[1]])
 head(pois_rate_samples)
 
 plot(pois_rate_sim)
 summary(pois_rate_sim)
 ```
 
-Still working on interpretation of this model
+Model 2:
+
+$$N_{i} \sim Pois(\lambda_{i})$$
+$$\log(\lambda_{i}) = \beta_0 + \beta_{i1} + \beta_{i2}*year_i$$
+$$\beta_k \sim N(0, 100^2)$$
+
+```{r}
+# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
+# Allows both intercept and slope to vary by longitude range
+
+pois_rate_model <- "model{
+  #Data
+  for (i in 1:length(numQuakes)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    numQuakes[i] ~ dpois(lambda[i])
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2[lon[i]]*year[i]
+  }
+
+  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
+  # is affected by our chosen variables
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  beta2[1] <- 0
+  for (i in 2:9) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+    beta2[i] ~ dnorm(0, 1/100^2)
+  }
+  
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+pois_rate_jags <- jags.model(textConnection(pois_rate_model),
+                        data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+pois_rate_sim <- coda.samples(pois_rate_jags,
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=500000)
+
+#store the samples in a data frame:
+pois_rate_samples <- data.frame(steps=c(1:500000), pois_rate_sim[[1]])
+head(pois_rate_samples)
+
+plot(pois_rate_sim)
+summary(pois_rate_sim)
+```
+
+
+
+
 
 
 
