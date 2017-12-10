@@ -1,0 +1,431 @@
+---
+title: "Checkpoint 6"
+author: "Katya Kelly & Katja McKiernan"
+date: "December 7, 2017"
+output: html_document
+---
+
+## Progress
+Since the last checkpoint, we have set up a Bayesian Poisson regression model to estimate the rate of large earthquakes per year. We have also set up most of a model to predict magnitude based on the categorical variable region that we created and added to our data set.
+\
+Katja worked on creating and adding the categorical region variable, while Katya worked on adding the years without any large quakes to our data set. We both worked equally on the models and rjags simulations.
+\
+Our next steps involve cleaning up models and code and using our estimated rate of large earthquakes $\lambda$ to predict the time until the next large quake. We may also want to investigate the year 1957, which had 8 earthquakes over the magnitude of 7, the most by far of any year.
+
+/
+```{r}
+cleanQuakes = read.csv("cleanQuakes.csv")
+
+library(dplyr)
+cleanQuakes1 <- cleanQuakes %>%
+  select(-c(X.1))
+```
+
+```{r}
+library(stringr)
+library(lubridate)
+
+#Creating year, month, and day columns and adding to cleanQuakes1
+Year_ <- year(cleanQuakes1$time)
+Month_ <- month(cleanQuakes1$time)
+Day_ <- day(cleanQuakes1$time)
+cleanQuakes1 <- cbind(cleanQuakes1, Year_)
+cleanQuakes1 <- cbind(cleanQuakes1, Month_)
+cleanQuakes1 <- cbind(cleanQuakes1, Day_)
+
+cleanQuakes1$time <- substring(cleanQuakes1$time, 1, 19)
+time_of_Quake <- str_sub(cleanQuakes1$time, -8,-1)
+cleanQuakes1 <- cbind(cleanQuakes1, time_of_Quake)
+
+cleanQuakesFin <- cleanQuakes1 %>%
+  select(-c(time))
+```
+
+```{r}
+quakesAbove7 <- filter(cleanQuakesFin, mag >= 7)
+quakesSince1950 <- filter(cleanQuakesFin, Year_ >= 1950)
+quakesAbove7Since1950 <- filter(cleanQuakesFin, Year_ >=1950, mag >= 7)
+```
+
+
+```{r}
+#Creating regions Hawaii, Alaska, Canada, Mexico, US for each quake
+
+cleanQuakesFin$region = cleanQuakesFin$place
+cleanQuakesFin$region = as.character(cleanQuakesFin$region)
+
+createRegion <- function(dataset){
+  dataset <- within(dataset, region[grepl("Hawaii", dataset$region)]<-"Hawaii")
+  dataset <- within(dataset, region[grepl("Alaska", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Canada", dataset$region)]<- "Canada")
+  dataset <- within(dataset, region[grepl("MX", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Mexico", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("California", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Guatemala", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("El Salvador", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Venezuela", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("CA", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Nicaragua", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Honduras", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Oregon", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Washington", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Russia", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Revilla", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Nevada", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("NV", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Wyoming", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Montana", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Aleutian", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Ocean", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Bristol", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Bering", dataset$region)]<- "Alaska")
+}
+
+cleanQuakesFin <- createRegion(cleanQuakesFin)
+
+```
+
+
+
+### Question: Can we predict magnitude by region (categorical)?
+
+
+```{r}
+# Adding region indicator variables to data set
+regionClean <- cleanQuakesFin
+
+cat_regionMatrix <- model.matrix(id ~ region, regionClean)
+colnames(cat_regionMatrix)[1] <- c("Intercept")
+
+regionClean <- cbind(regionClean,cat_regionMatrix)
+
+regionClean <- regionClean %>%
+  select(-c((Intercept)))
+
+# Plot magnitude by region
+library(ggplot2)
+ggplot(data=regionClean, aes(x=region, y=mag)) + geom_boxplot() + xlab("Region") + ylab("Magnitude")
+```
+
+Based on these boxplots, the relationship between magnitude and region seems not incredibly significant, but we will try a model anyway. It appears that the variance is somewhat different among these regions, but the medians hover around the same value of just under 5.
+\
+\
+
+Notation:
+$M_i$ - the magnitude of earthquake $i$
+\
+$rCan_i$ - indicator of whether or not earthquake $i$ was in the Canada region
+\
+$rMex_i$ - indicator of whether or not earthquake $i$ was in the Mexico region
+\
+$rHI_i$ - indicator of whether or not earthquake $i$ was in the Hawaii region
+\
+$rUS_i$ - indicator of whether or not earthquake $i$ was in the US region
+\
+Model:
+$$M_i|\beta_0, \beta_1, \beta_2, \beta_3, \beta_4, \tau_0, \tau_1, \tau_2, \tau_3, \tau_4 \sim N(\beta_0 + \beta_1*rCan_i + \beta_2*rMex_i + \beta_3*rHI_i + \beta_3*rUS_i, (\tau_0 + \tau_1*(rCan_i + rMex_i + rHI_i + rUS_i)^{-1}$$
+$$\beta_k \sim N(0, 100^2)$$
+$$\tau_k \sim N(10, 100^2)$$
+
+```{r}
+# Rjags for magnitude by region (indicator)
+
+library(rjags)
+mag_region_model <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0 + beta1*rCan[i] + beta2*rMex[i] + beta3*rHI[i] + beta4*rUS[i], tau0 + tau1*(rCan[i] + rMex[i] + rHI[i] + rUS[i]))
+  }
+
+  #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  beta2 ~ dnorm(0, 1/100^2)
+  beta3 ~ dnorm(0, 1/100^2)
+  beta4 ~ dnorm(0, 1/100^2)
+
+  tau0 ~ dnorm(10, 1/100^2)
+  tau1 ~ dnorm(10, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_region_jags <- jags.model(textConnection(mag_region_model),
+                        data = list(M=log(regionClean$mag), rCan=regionClean$regionCanada, rMex=regionClean$regionMexico, rHI = regionClean$regionHawaii, rUS = regionClean$regionUS),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_region_sim <- coda.samples(mag_region_jags,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1", "beta2", "beta3", "beta4"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_region_samples <- data.frame(steps=c(1:10000), mag_region_sim[[1]])
+head(mag_region_samples)
+```
+
+
+```{r}
+summary(mag_region_sim)
+plot(mag_region_sim)
+```
+
+With Alaska as our reference region, we believe this model is telling us that Hawaii, Mexico, and Canada tend to have earthquakes with slightly smaller magnitude on average, while the continental US tends to have slightly larger earthquakes. This might be surprising at first because Alaska has the most large earthquakes (above magnitude 7), but it also has many more small earthquakes, bringing the total percentage of large earthquakes down.
+
+
+```{r}
+# Rjags for magnitude by region (categorical) - currently not working!
+
+library(rjags)
+mag_region_modelC <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0 + beta1[region[i]], tau0 + tau1[region[i]])
+  }
+
+  #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  tau[1] <- 0
+  for (i in 2:5) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+    tau1[i] ~ dnorm(10, 1/100^2)
+  }
+
+  tau0 ~ dnorm(10, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_region_jagsC <- jags.model(textConnection(mag_region_modelC),
+                        data = list(M=log(regionClean$mag), region=regionClean$region),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_region_simC <- coda.samples(mag_region_jagsC,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_region_samplesC <- data.frame(steps=c(1:10000), mag_region_simC[[1]])
+head(mag_region_samplesC)
+```
+
+
+```{r}
+summary(mag_region_sim)
+plot(mag_region_sim)
+```
+
+```{r}
+# Cutting longitude into 9 categorical ranges of width 20 degrees - The (0, 1] interval is for years with no large earthquakes
+longCategories <- cut(quakesAbove7$longitude, c(-180, -160, -140, -120, -100, -80, 0, 1, 160, 180))
+head(longCategories)
+quakesAbove7$LongCat = longCategories
+
+# Adding years with 0 large earthquakes into data so models are more accurate
+missingYears7 <- c(1900:2016)[!(c(1900:2016) %in% quakesAbove7$Year_)]
+missingYearsCount7 <- rep(0, length(missingYears7))
+
+quakes116Above7 <- data.frame(Year_ = missingYears7, X = rep(NA, length(missingYears7)), latitude = rep(NA, length(missingYears7)), longitude = rep(NA, length(missingYears7)), depth = rep(NA, length(missingYears7)), mag = rep(0, length(missingYears7)), magType = rep(NA, length(missingYears7)), id = rep(NA, length(missingYears7)), place = rep(NA, length(missingYears7)), type = rep(NA, length(missingYears7)), locationSource = rep(NA, length(missingYears7)), magSource = rep(NA, length(missingYears7)), Month_ = rep(NA, length(missingYears7)), Day_ = rep(NA, length(missingYears7)), time_of_Quake = rep(NA, length(missingYears7)), LongCat = rep("(0,1]", length(missingYears7)))  
+
+quakes116Above7Fin <-rbind(quakes116Above7, quakesAbove7)
+
+
+# Grouping earthquakes by year and longitude category
+groupedQuakes116 <- quakes116Above7Fin %>%
+  group_by(Year_, LongCat) %>%
+  summarise(medianMag = median(mag), count = n())
+
+# Resetting the count to 0 for years without large earthquakes
+for(i in 1:nrow(groupedQuakes116)){
+  if (groupedQuakes116$Year_[i] %in% missingYears7){
+  groupedQuakes116$count[i] = 0
+  }
+}
+```
+
+```{r}
+# Plot number of large earthquakes by year
+library(ggplot2)
+ggplot(data=groupedQuakes116, aes(x=Year_, y=count)) + geom_point() + xlab("Year") + ylab("Number of Large Earthquakes")
+
+# Plot number of large earthquakes by longitude group
+ggplot(data=groupedQuakes116, aes(x=LongCat, y=count)) + geom_point() + xlab("Longitude Range") +
+  ylab("Number of Large Earthquakes")
+```
+
+### Question - Can we use our data to estimate the rate of earthquakes per year?
+$N_{i}$ - the number of large earthquakes in row $i$ (rows sorted by year & longitude range)
+\
+$\lambda_{i}$ - the rate of large earthquakes per longitude range per year in row $i$
+\
+$lon_{i}$ - the longitude range of the earthquakes that happened in row $i$
+\
+$year_{i}$ - the year in which the earthquakes in row $i$ occurred
+\
+Model 1:
+
+$$N_{i} \sim Pois(\lambda_{i})$$
+$$\log(\lambda_{i}) = \beta_0 + \beta_{i1} + \beta_{2}*year_i$$
+$$\beta_k \sim N(0, 100^2)$$
+
+```{r}
+# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
+# Model for which only the intercept varies by longitude range
+
+pois_rate_model <- "model{
+  #Data
+  for (i in 1:length(numQuakes)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    numQuakes[i] ~ dpois(lambda[i])
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i]
+  }
+
+  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
+  # is affected by our chosen variables
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  for (i in 2:9) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+  }
+  beta2 ~ dnorm(0, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+pois_rate_jags <- jags.model(textConnection(pois_rate_model),
+                        data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+pois_rate_sim <- coda.samples(pois_rate_jags,
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=5000000)
+
+#store the samples in a data frame:
+pois_rate_samples <- data.frame(steps=c(1:5000000), pois_rate_sim[[1]])
+head(pois_rate_samples)
+
+#plot(pois_rate_sim)
+#summary(pois_rate_sim)
+```
+
+Model 2:
+
+$$N_{i} \sim Pois(\lambda_{i})$$
+$$\log(\lambda_{i}) = \beta_0 + \beta_{i1} + \beta_{i2}*year_i$$
+$$\beta_k \sim N(0, 100^2)$$
+
+```{r}
+# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
+# Allows both intercept and slope to vary by longitude range
+
+pois_rate_model2 <- "model{
+  #Data
+  for (i in 1:length(numQuakes)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    numQuakes[i] ~ dpois(lambda[i])
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2[lon[i]]*year[i]
+  }
+
+  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
+  # is affected by our chosen variables
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  beta2[1] <- 0
+  for (i in 2:9) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+    beta2[i] ~ dnorm(0, 1/100^2)
+  }
+  
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+pois_rate_jags2 <- jags.model(textConnection(pois_rate_model2),
+                        data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+pois_rate_sim2 <- coda.samples(pois_rate_jags2,
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=2000000)
+
+#store the samples in a data frame:
+pois_rate_samples2 <- data.frame(steps=c(1:2000000), pois_rate_sim2[[1]])
+head(pois_rate_samples2)
+
+#plot(pois_rate_sim2)
+summary(pois_rate_sim2)
+```
+
+### Question: How can we use our estimated rate of earthquakes to predict the time until the next large quake by region, where region is characterized by a 20-degree range of longitudes?
+Check weird syntax error on this model
+```{r}
+# Rjags for Exponential regression - estimating time (in years) until next large earthquake by region
+# Allows both intercept and slope to vary by longitude range
+
+exp_model <- "model{
+  #Data
+  for (i in 1:88) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    tToQ[i] ~ dexp(lambda[i])
+    log(r[i]) = beta0 + beta1[lon[i]] + beta2[lon[i]]*year[i]
+  }
+
+  #Priors - informative, based on output from the Poisson regression. Currently based on 2,000,000 iterations of prev model
+
+  beta1List <- c(0, 18.86443, -11.52811, -26.72198, 0.51781, -59.45533, , -195.94977, -195.78861, -21.42405)
+  beta2List <- c(0, -0.02550, -0.01441, -0.02248, -0.01619, -0.01008, -196.05346, -195.89562, -0.01726)
+  beta0 <- -98.55317
+  
+  for (i in 1:88) {
+    lambda[i] ~ dgamma(1, r[i])
+  }
+
+  for (j in 1:length(beta1List)) {
+    beta1[j] <- beta1List[j]
+    beta2[j] <- beta2List[j]
+  }
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+exp_jags <- jags.model(textConnection(exp_model),
+                        data = list(tToQ = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_), 
+                       inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+exp_sim <- coda.samples(exp_jags,
+                        variable.names = c("lambda"), n.iter=500000)
+
+#store the samples in a data frame:
+exp_samples <- data.frame(steps=c(1:500000), exp_sim[[1]])
+head(exp_samples)
+
+plot(exp_sim)
+summary(exp_sim)
+```
+
+
+
+
+
+
+
+
+
+
