@@ -316,6 +316,7 @@ tToQpred2000 <- rep(0,10000)
 for (i in 1:10000) {
   tToQpred2000[i] <- rexp(1, rate=pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1 + pois_rate_samples2[i,]$beta2*year + pois_rate_samples2[i,]$beta3*year)
 }
+
 ```
 
 
