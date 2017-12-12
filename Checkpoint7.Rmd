@@ -377,16 +377,20 @@ summary(pois_rate_sim2)
 set.seed(1997)
 tToQpred <- rep(0,10000)
 
+tToQpred[1] <- rexp(1, rate = exp(pois_rate_samples2[1,]$beta0 + pois_rate_samples2[1,]$beta1.2. + pois_rate_samples2[1,]$beta2*2020 + pois_rate_samples2[1,]$beta3.2.*2020))
+
 # REMEMBER TO ACCOUNT FOR LOG
-for (i in 1:10000) {
-  tToQpred[i] <- rexp(1, rate=pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1 + pois_rate_samples2[i,]$beta2*year + pois_rate_samples2[i,]$beta3*year)
+ for (i in 1:10000) {
+   tToQpred[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.2. + pois_rate_samples2[i,]$beta2*2020 + pois_rate_samples2[i,]$beta3.2.*2020))
 }
+
+
 ```
 
 
 ```{r}
 # Visualize distribution for time til next large quake:
-ggplot(data=as.data.frame(tToQpred), aes(x=toToQpred)) + 
+ggplot(data=as.data.frame(tToQpred), aes(x=tToQpred)) + 
   geom_histogram(boundary=0, color="white", aes(y=..density..))
 ```
 
