@@ -104,7 +104,7 @@ regionClean <- regionClean %>%
 
 # Plot magnitude by region
 library(ggplot2)
-ggplot(data=regionClean, aes(x=region, y=mag)) + geom_boxplot() + xlab("Region") + ylab("Magnitude")
+ggplot(data=regionClean, aes(x=region, y=log(mag))) + geom_boxplot() + xlab("Region") + ylab("Log of Magnitude")
 ```
 
 Based on these boxplots, the relationship between magnitude and region seems not incredibly significant, but we will try a model anyway. It appears that the variance is somewhat different among these regions, but the medians hover around the same value of just under 5.
@@ -191,7 +191,7 @@ mag_region_modelC <- "model{
   
   beta0 ~ dnorm(0, 1/100^2)
   beta1[1] <- 0
-  tau[1] <- 0
+  tau1[1] <- 0
   for (i in 2:5) {
     beta1[i] ~ dnorm(0, 1/100^2)
     tau1[i] ~ dnorm(10, 1/100^2)
@@ -205,7 +205,7 @@ mag_region_modelC <- "model{
 #combining the model (nfl_model) and data (sports)
 #set the random number seed
 mag_region_jagsC <- jags.model(textConnection(mag_region_modelC),
-                        data = list(M=log(regionClean$mag), region=regionClean$region),
+                        data = list(M=log(regionClean$mag), region=as.factor(regionClean$region)),
                         inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
 
 #simulate a sample from the posterior
@@ -334,18 +334,19 @@ pois_rate_model2 <- "model{
   for (i in 1:length(numQuakes)) {
     #Note: dnorm in rjags takes the precision, not st. dev.
     numQuakes[i] ~ dpois(lambda[i])
-    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2[lon[i]]*year[i]
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i] + beta3[lon[i]]*year[i]
   }
 
   #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
   # is affected by our chosen variables
   
   beta0 ~ dnorm(0, 1/100^2)
+  beta2 ~ dnorm(0, 1/100^2)
   beta1[1] <- 0
-  beta2[1] <- 0
+  beta3[1] <- 0
   for (i in 2:9) {
     beta1[i] ~ dnorm(0, 1/100^2)
-    beta2[i] ~ dnorm(0, 1/100^2)
+    beta3[i] ~ dnorm(0, 1/100^2)
   }
   
   
@@ -360,7 +361,7 @@ pois_rate_jags2 <- jags.model(textConnection(pois_rate_model2),
 
 #simulate a sample from the posterior
 pois_rate_sim2 <- coda.samples(pois_rate_jags2,
-                        variable.names = c("beta0", "beta1", "beta2"), n.iter=2000000)
+                        variable.names = c("beta0", "beta1", "beta2", "beta3"), n.iter=2000000)
 
 #store the samples in a data frame:
 pois_rate_samples2 <- data.frame(steps=c(1:2000000), pois_rate_sim2[[1]])
@@ -370,54 +371,23 @@ head(pois_rate_samples2)
 summary(pois_rate_sim2)
 ```
 
-### Question: How can we use our estimated rate of earthquakes to predict the time until the next large quake by region, where region is characterized by a 20-degree range of longitudes?
-Check weird syntax error on this model
+### Question: How can we use our posterior distribution for yearly rate of earthquakes to predict the time until the next large quake by region, where region is characterized by a 20-degree range of longitudes?
+
 ```{r}
-# Rjags for Exponential regression - estimating time (in years) until next large earthquake by region
-# Allows both intercept and slope to vary by longitude range
+set.seed(1997)
+tToQpred <- rep(0,10000)
 
-exp_model <- "model{
-  #Data
-  for (i in 1:88) {
-    #Note: dnorm in rjags takes the precision, not st. dev.
-    tToQ[i] ~ dexp(lambda[i])
-    log(r[i]) = beta0 + beta1[lon[i]] + beta2[lon[i]]*year[i]
-  }
+# REMEMBER TO ACCOUNT FOR LOG
+for (i in 1:10000) {
+  tToQpred[i] <- rexp(1, rate=pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1 + pois_rate_samples2[i,]$beta2*year + pois_rate_samples2[i,]$beta3*year)
+}
+```
 
-  #Priors - informative, based on output from the Poisson regression. Currently based on 2,000,000 iterations of prev model
 
-  beta1List <- c(0, 18.86443, -11.52811, -26.72198, 0.51781, -59.45533, , -195.94977, -195.78861, -21.42405)
-  beta2List <- c(0, -0.02550, -0.01441, -0.02248, -0.01619, -0.01008, -196.05346, -195.89562, -0.01726)
-  beta0 <- -98.55317
-  
-  for (i in 1:88) {
-    lambda[i] ~ dgamma(1, r[i])
-  }
-
-  for (j in 1:length(beta1List)) {
-    beta1[j] <- beta1List[j]
-    beta2[j] <- beta2List[j]
-  }
-  
-}"
-
-#set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
-#set the random number seed
-exp_jags <- jags.model(textConnection(exp_model),
-                        data = list(tToQ = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_), 
-                       inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
-
-#simulate a sample from the posterior
-exp_sim <- coda.samples(exp_jags,
-                        variable.names = c("lambda"), n.iter=500000)
-
-#store the samples in a data frame:
-exp_samples <- data.frame(steps=c(1:500000), exp_sim[[1]])
-head(exp_samples)
-
-plot(exp_sim)
-summary(exp_sim)
+```{r}
+# Visualize distribution for time til next large quake:
+ggplot(data=as.data.frame(tToQpred), aes(x=toToQpred)) + 
+  geom_histogram(boundary=0, color="white", aes(y=..density..))
 ```
 
 
