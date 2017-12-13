@@ -177,7 +177,7 @@ With Alaska as our reference region, we believe this model is telling us that Ha
 
 
 ```{r}
-# Rjags for magnitude by region (categorical) - currently not working!
+# Rjags for magnitude by region (categorical)
 
 library(rjags)
 mag_region_modelC <- "model{
@@ -374,32 +374,56 @@ summary(pois_rate_sim2)
 ### Question: How can we use our posterior distribution for yearly rate of earthquakes to predict the time until the next large quake by region, where region is characterized by a 20-degree range of longitudes?
 
 ```{r}
+# Take 10,000 samples from exponential - w. Aleutians, 2020
 set.seed(1997)
-tToQpred <- rep(0,10000)
-
-tToQpred[1] <- rexp(1, rate = exp(pois_rate_samples2[1,]$beta0 + pois_rate_samples2[1,]$beta1.2. + pois_rate_samples2[1,]$beta2*2020 + pois_rate_samples2[1,]$beta3.2.*2020))
+tToQAleut2020 <- rep(0,10000)
 
 # REMEMBER TO ACCOUNT FOR LOG
  for (i in 1:10000) {
-   tToQpred[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.2. + pois_rate_samples2[i,]$beta2*2020 + pois_rate_samples2[i,]$beta3.2.*2020))
+   tToQAleut2020[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.2. + pois_rate_samples2[i,]$beta2*2020 + pois_rate_samples2[i,]$beta3.2.*2020))
 }
 
-
+# Visualize distribution for time til next large quake:
+ggplot(data=as.data.frame(tToQAleut2020), aes(x=tToQAleut2020)) + 
+  geom_histogram(boundary=0, color="white", aes(y=..density..)) + xlab("Years to Next Large Quake") + 
+  ylab("Density")
 ```
 
 
 ```{r}
+# Take 20,000 samples from exponential - w. Aleutians, 2020
+tToQAleut2020_20 <- rep(0,20000)
+
+ for (i in 1:20000) {
+   tToQAleut2020_20[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.2. + pois_rate_samples2[i,]$beta2*2020 + pois_rate_samples2[i,]$beta3.2.*2020))
+}
+
 # Visualize distribution for time til next large quake:
-ggplot(data=as.data.frame(tToQpred), aes(x=tToQpred)) + 
-  geom_histogram(boundary=0, color="white", aes(y=..density..))
+ggplot(data=as.data.frame(tToQAleut2020_20), aes(x=tToQAleut2020_20)) + 
+  geom_histogram(boundary=0, color="white", aes(y=..density..)) + xlab("Years to Next Large Quake") + 
+  ylab("Density") + lims(x=c(0,10), y=c(0,1.5)) + ggtitle("Time to Next Large Earthquake, Western Aleutian Islands 2020")
+
+# Chance of having to wait less than 1 year until the next large quake
+mean(tToQAleut2020_20 < 1)
 ```
 
 
+```{r}
+# Take 20,000 samples from exponential - US West Coast, 2018
+tToQUS2018_20 <- rep(0,20000)
 
+ for (i in 1:20000) {
+   tToQUS2018_20[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.4. + pois_rate_samples2[i,]$beta2*2018 + pois_rate_samples2[i,]$beta3.4.*2018))
+}
 
+# Visualize distribution for time til next large quake:
+ggplot(data=as.data.frame(tToQUS2018_20), aes(x=tToQUS2018_20)) + 
+  geom_histogram(boundary=0, color="white", aes(y=..density..)) + xlab("Years to Next Large Quake") + 
+  ylab("Density") + lims(x=c(0,10), y=c(0,1.5)) + ggtitle("Time to Next Large Earthquake, US West Coast 2018")
 
-
-
+# Chance of having to wait less than 1 year until the next large quake
+mean(tToQUS2018_20 < 1)
+```
 
 
 
