@@ -1,0 +1,333 @@
+---
+title: "Predicting 4.5 and Up from 2000"
+author: "Katja McKiernan"
+date: "December 12, 2017"
+output: html_document
+---
+
+```{r}
+Quakes2000 = read.csv("quakes2000.csv")
+
+View(Quakes2000)
+```
+
+
+```{r}
+
+library(dplyr)
+Quakes2000New <- Quakes2000 %>%
+  select(c(time, latitude, longitude, depth, mag, id, place, type))
+
+library(stringr)
+library(lubridate)
+#Creating a year, month, and day columns and adding to cleanQuakes1
+Year_ <- year(Quakes2000New$time)
+Month_ <- month(Quakes2000New$time)
+Day_ <- day(Quakes2000New$time)
+Quakes2000New <- cbind(Quakes2000New, Year_)
+Quakes2000New <- cbind(Quakes2000New, Month_)
+Quakes2000New <- cbind(Quakes2000New, Day_)
+
+#lapply(cleanQuakes1$time, as.character)
+
+Quakes2000New$time <- substring(Quakes2000New$time, 1, 19)
+time_of_Quake <- str_sub(Quakes2000New$time, -8,-1)
+Quakes2000New <- cbind(Quakes2000New, time_of_Quake)
+
+```
+
+
+```{r}
+#Creating regions Hawaii, Alaska, Canada, Mexico, US for each quake
+
+Quakes2000New$region = Quakes2000New$place
+Quakes2000New$region = as.character(Quakes2000New$region)
+
+createRegion <- function(dataset){
+  dataset <- within(dataset, region[grepl("Hawaii", dataset$region)]<-"Hawaii")
+  dataset <- within(dataset, region[grepl("Alaska", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Canada", dataset$region)]<- "Canada")
+  dataset <- within(dataset, region[grepl("MX", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Mexico", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("California", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Guatemala", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("El Salvador", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Venezuela", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("CA", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Nicaragua", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Honduras", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Oregon", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Washington", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Russia", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Revilla", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Nevada", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("NV", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Wyoming", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Montana", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Aleutian", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Ocean", dataset$region)]<- "Mexico")
+  dataset <- within(dataset, region[grepl("Bristol", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Bering", dataset$region)]<- "Alaska")
+  dataset <- within(dataset, region[grepl("Idaho", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Rise", dataset$region)]<- "Hawaii")
+  dataset <- within(dataset, region[grepl("Oklahoma", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Arizona", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Kansas", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Vancouver", dataset$region)]<- "Canada")
+  dataset <- within(dataset, region[grepl("Napa", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Sand", dataset$region)]<- "Hawaii")
+  dataset <- within(dataset, region[grepl("Texas", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Colorado", dataset$region)]<- "US")
+  dataset <- within(dataset, region[grepl("Utah", dataset$region)]<- "US")
+}
+
+Quakes2000Fin <- createRegion(Quakes2000New)
+
+
+
+```
+
+
+```{r}
+# Adding region indicator variables to data set
+regionClean2000 <- Quakes2000Fin
+
+cat_region2000Matrix <- model.matrix(id ~ region, regionClean2000)
+colnames(cat_region2000Matrix)[1] <- c("Intercept")
+
+regionClean2000 <- cbind(regionClean2000,cat_region2000Matrix)
+
+regionClean2000 <- regionClean2000 %>%
+  select(-c((Intercept)))
+
+
+```
+
+
+```{r}
+# Rjags for magnitude by region (indicator)
+#DON'T USE!!!!!!
+library(rjags)
+mag_region_model2000 <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0 + beta1*rCan[i] + beta2*rMex[i] + beta3*rHI[i] + beta4*rUS[i], tau0 + tau1*(rCan[i] + rMex[i] + rHI[i] + rUS[i]))
+  }
+
+  #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1 ~ dnorm(0, 1/100^2)
+  beta2 ~ dnorm(0, 1/100^2)
+  beta3 ~ dnorm(0, 1/100^2)
+  beta4 ~ dnorm(0, 1/100^2)
+
+  tau0 ~ dnorm(10, 1/100^2)
+  tau1 ~ dnorm(10, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_region_jags2000 <- jags.model(textConnection(mag_region_model2000),
+                        data = list(M=log(regionClean2000$mag), rCan=regionClean2000$regionCanada, rMex=regionClean2000$regionMexico, rHI = regionClean2000$regionHawaii, rUS = regionClean2000$regionUS),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_region_sim2000 <- coda.samples(mag_region_jags2000,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1", "beta2", "beta3", "beta4"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_region_samples2000 <- data.frame(steps=c(1:10000), mag_region_sim2000[[1]])
+head(mag_region_samples2000)
+
+summary(mag_region_sim2000)
+plot(mag_region_sim2000)
+
+
+```
+
+
+```{r}
+# Rjags for magnitude by region (categorical)
+
+library(rjags)
+mag_region_modelC2000 <- "model{
+  #Data
+  for (i in 1:length(M)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    M[i] ~ dnorm(beta0 + beta1[region[i]], tau0 + tau1[region[i]])
+  }
+
+  #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  tau1[1] <- 0
+  for (i in 2:5) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+    tau1[i] ~ dnorm(10, 1/100^2)
+  }
+
+  tau0 ~ dnorm(10, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+mag_region_jagsC2000 <- jags.model(textConnection(mag_region_modelC2000),
+                        data = list(M=log(regionClean2000$mag), region=as.factor(regionClean2000$region)),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+mag_region_simC2000 <- coda.samples(mag_region_jagsC2000,
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+
+#store the samples in a data frame:
+mag_region_samplesC2000 <- data.frame(steps=c(1:10000), mag_region_simC2000[[1]])
+head(mag_region_samplesC2000)
+```
+
+
+```{r}
+summary(mag_region_simC2000)
+plot(mag_region_simC2000)
+```
+
+
+```{r}
+# Cutting longitude into 9 categorical ranges of width 20 degrees - The (0, 1] interval is for years with no large earthquakes
+longCategories2000 <- cut(Quakes2000Fin$longitude, c(-180, -160, -140, -120, -100, -80, 0, 1, 160, 180))
+head(longCategories2000)
+Quakes2000Fin$LongCat = longCategories2000
+
+# Grouping earthquakes by year and longitude category
+groupedQuakes2000 <- Quakes2000Fin %>%
+  group_by(Year_, LongCat) %>%
+  summarise(medianMag = median(mag), count = n())
+
+```
+
+
+```{r}
+# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
+# Model for which only the intercept varies by longitude range
+
+pois_rate_model2000 <- "model{
+  #Data
+  for (i in 1:length(numQuakes)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    numQuakes[i] ~ dpois(lambda[i])
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i]
+  }
+
+  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
+  # is affected by our chosen variables
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  for (i in 2:9) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+  }
+  beta2 ~ dnorm(0, 1/100^2)
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+pois_rate_jags2000 <- jags.model(textConnection(pois_rate_model2000),
+                        data = list(numQuakes = groupedQuakes2000$count, lon = groupedQuakes116$LongCat, year = groupedQuakes2000$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+pois_rate_sim2000 <- coda.samples(pois_rate_jags2000,
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=5000000)
+
+#store the samples in a data frame:
+pois_rate_samples2000 <- data.frame(steps=c(1:5000000), pois_rate_sim2000[[1]])
+head(pois_rate_samples2000)
+
+#plot(pois_rate_sim2000)
+#summary(pois_rate_sim2000)
+
+#library(MacBayes)
+running_mean_plot(pois_rate_samples2000$beta0)
+```
+
+
+
+```{r}
+# GOOD RJAGS POISSON MODEL
+# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
+# Allows both intercept and slope to vary by longitude range
+
+pois_rate_model20002 <- "model{
+  #Data
+  for (i in 1:length(numQuakes)) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    numQuakes[i] ~ dpois(lambda[i])
+    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i] + beta3[lon[i]]*year[i]
+  }
+
+  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
+  # is affected by our chosen variables
+  
+  beta0 ~ dnorm(0, 1/100^2)
+  beta2 ~ dnorm(0, 1/100^2)
+  beta1[1] <- 0
+  beta3[1] <- 0
+  for (i in 2:9) {
+    beta1[i] ~ dnorm(0, 1/100^2)
+    beta3[i] ~ dnorm(0, 1/100^2)
+  }
+  
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+pois_rate_jags20002 <- jags.model(textConnection(pois_rate_model20002),
+                        data = list(numQuakes = groupedQuakes2000$count, lon = groupedQuakes2000$LongCat, year = groupedQuakes2000$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+pois_rate_sim20002 <- coda.samples(pois_rate_jags20002,
+                        variable.names = c("beta0", "beta1", "beta2", "beta3"), n.iter=2000000)
+
+#store the samples in a data frame:
+pois_rate_samples20002 <- data.frame(steps=c(1:2000000), pois_rate_sim20002[[1]])
+#head(pois_rate_samples20002)
+
+#plot(pois_rate_sim2)
+summary(pois_rate_sim20002)
+```
+
+
+```{r}
+set.seed(1997)
+tToQpred2000 <- rep(0,10000)
+
+# REMEMBER TO ACCOUNT FOR LOG
+for (i in 1:10000) {
+  tToQpred2000[i] <- rexp(1, rate=pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1 + pois_rate_samples2[i,]$beta2*year + pois_rate_samples2[i,]$beta3*year)
+}
+
+```
+
+
+```{r}
+# Visualize distribution for time til next large quake:
+ggplot(data=as.data.frame(tToQpred), aes(x=toToQpred)) + 
+  geom_histogram(boundary=0, color="white", aes(y=..density..))
+```
+
+
+
+
+
+
