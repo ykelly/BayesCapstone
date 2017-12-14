@@ -374,7 +374,7 @@ summary(pois_rate_sim2)
 ### Question: How can we use our posterior distribution for yearly rate of earthquakes to predict the time until the next large quake by region, where region is characterized by a 20-degree range of longitudes?
 
 ```{r}
-# Take 10,000 samples from exponential - w. Aleutians, 2020
+# Take 10,000 samples from exponential - w. Aleutians, 2018
 set.seed(1997)
 tToQAleut2020 <- rep(0,10000)
 
@@ -392,19 +392,19 @@ ggplot(data=as.data.frame(tToQAleut2020), aes(x=tToQAleut2020)) +
 
 ```{r}
 # Take 20,000 samples from exponential - w. Aleutians, 2020
-tToQAleut2020_20 <- rep(0,20000)
+tToQAleut2018_20 <- rep(0,20000)
 
  for (i in 1:20000) {
-   tToQAleut2020_20[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.2. + pois_rate_samples2[i,]$beta2*2020 + pois_rate_samples2[i,]$beta3.2.*2020))
+   tToQAleut2018_20[i] <- rexp(1, rate=exp(pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1.2. + pois_rate_samples2[i,]$beta2*2018 + pois_rate_samples2[i,]$beta3.2.*2018))
 }
 
 # Visualize distribution for time til next large quake:
-ggplot(data=as.data.frame(tToQAleut2020_20), aes(x=tToQAleut2020_20)) + 
+ggplot(data=as.data.frame(tToQAleut2018_20), aes(x=tToQAleut2018_20)) + 
   geom_histogram(boundary=0, color="white", aes(y=..density..)) + xlab("Years to Next Large Quake") + 
-  ylab("Density") + lims(x=c(0,10), y=c(0,1.5)) + ggtitle("Time to Next Large Earthquake, Western Aleutian Islands 2020")
+  ylab("Density") + lims(x=c(0,10), y=c(0,1.5)) + ggtitle("Time to Next Large Earthquake, Western Aleutian Islands 2018")
 
 # Chance of having to wait less than 1 year until the next large quake
-mean(tToQAleut2020_20 < 1)
+mean(tToQAleut2018_20 < 1)
 ```
 
 
