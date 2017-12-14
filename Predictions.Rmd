@@ -1,12 +1,12 @@
 ---
 title: "Predicting 4.5 and Up from 2000"
-author: "Katja McKiernan"
+author: "Katja McKiernan, Katya Kelly"
 date: "December 12, 2017"
 output: html_document
 ---
 
 ```{r}
-Quakes2000 = read.csv("quakes2000.csv")
+Quakes2000 <- read.csv("C:/Users/Katya/Documents/Bayesian/BayesCapstone/quakes2000.csv")
 
 View(Quakes2000)
 ```
@@ -99,54 +99,13 @@ regionClean2000 <- cbind(regionClean2000,cat_region2000Matrix)
 
 regionClean2000 <- regionClean2000 %>%
   select(-c((Intercept)))
-
-
 ```
 
 
+
 ```{r}
-# Rjags for magnitude by region (indicator)
-#DON'T USE!!!!!!
-library(rjags)
-mag_region_model2000 <- "model{
-  #Data
-  for (i in 1:length(M)) {
-    #Note: dnorm in rjags takes the precision, not st. dev.
-    M[i] ~ dnorm(beta0 + beta1*rCan[i] + beta2*rMex[i] + beta3*rHI[i] + beta4*rUS[i], tau0 + tau1*(rCan[i] + rMex[i] + rHI[i] + rUS[i]))
-  }
-
-  #Priors - vague, assume no knowledge of relationship between region and magnitude or variance among regions
-  
-  beta0 ~ dnorm(0, 1/100^2)
-  beta1 ~ dnorm(0, 1/100^2)
-  beta2 ~ dnorm(0, 1/100^2)
-  beta3 ~ dnorm(0, 1/100^2)
-  beta4 ~ dnorm(0, 1/100^2)
-
-  tau0 ~ dnorm(10, 1/100^2)
-  tau1 ~ dnorm(10, 1/100^2)
-  
-}"
-
-#set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
-#set the random number seed
-mag_region_jags2000 <- jags.model(textConnection(mag_region_model2000),
-                        data = list(M=log(regionClean2000$mag), rCan=regionClean2000$regionCanada, rMex=regionClean2000$regionMexico, rHI = regionClean2000$regionHawaii, rUS = regionClean2000$regionUS),
-                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
-
-#simulate a sample from the posterior
-mag_region_sim2000 <- coda.samples(mag_region_jags2000,
-                        variable.names = c("tau0", "tau1", "beta0", "beta1", "beta2", "beta3", "beta4"), n.iter=10000)
-
-#store the samples in a data frame:
-mag_region_samples2000 <- data.frame(steps=c(1:10000), mag_region_sim2000[[1]])
-head(mag_region_samples2000)
-
-summary(mag_region_sim2000)
-plot(mag_region_sim2000)
-
-
+library(ggplot2)
+ggplot(data=regionClean2000, aes(x=region, y=log(mag))) + geom_boxplot() + xlab("Region") + ylab("log(Magnitude)")
 ```
 
 
@@ -176,7 +135,7 @@ mag_region_modelC2000 <- "model{
 }"
 
 #set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
+#combining the model and data
 #set the random number seed
 mag_region_jagsC2000 <- jags.model(textConnection(mag_region_modelC2000),
                         data = list(M=log(regionClean2000$mag), region=as.factor(regionClean2000$region)),
@@ -184,10 +143,10 @@ mag_region_jagsC2000 <- jags.model(textConnection(mag_region_modelC2000),
 
 #simulate a sample from the posterior
 mag_region_simC2000 <- coda.samples(mag_region_jagsC2000,
-                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=10000)
+                        variable.names = c("tau0", "tau1", "beta0", "beta1"), n.iter=50000)
 
 #store the samples in a data frame:
-mag_region_samplesC2000 <- data.frame(steps=c(1:10000), mag_region_simC2000[[1]])
+mag_region_samplesC2000 <- data.frame(steps=c(1:50000), mag_region_simC2000[[1]])
 head(mag_region_samplesC2000)
 ```
 
@@ -197,134 +156,28 @@ summary(mag_region_simC2000)
 plot(mag_region_simC2000)
 ```
 
-
 ```{r}
-# Cutting longitude into 9 categorical ranges of width 20 degrees - The (0, 1] interval is for years with no large earthquakes
-longCategories2000 <- cut(Quakes2000Fin$longitude, c(-180, -160, -140, -120, -100, -80, 0, 1, 160, 180))
-head(longCategories2000)
-Quakes2000Fin$LongCat = longCategories2000
-
-# Grouping earthquakes by year and longitude category
-groupedQuakes2000 <- Quakes2000Fin %>%
-  group_by(Year_, LongCat) %>%
-  summarise(medianMag = median(mag), count = n())
-
-```
-
-
-```{r}
-# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
-# Model for which only the intercept varies by longitude range
-
-pois_rate_model2000 <- "model{
-  #Data
-  for (i in 1:length(numQuakes)) {
-    #Note: dnorm in rjags takes the precision, not st. dev.
-    numQuakes[i] ~ dpois(lambda[i])
-    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i]
-  }
-
-  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
-  # is affected by our chosen variables
-  
-  beta0 ~ dnorm(0, 1/100^2)
-  beta1[1] <- 0
-  for (i in 2:9) {
-    beta1[i] ~ dnorm(0, 1/100^2)
-  }
-  beta2 ~ dnorm(0, 1/100^2)
-  
-}"
-
-#set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
-#set the random number seed
-pois_rate_jags2000 <- jags.model(textConnection(pois_rate_model2000),
-                        data = list(numQuakes = groupedQuakes2000$count, lon = groupedQuakes116$LongCat, year = groupedQuakes2000$Year_),
-                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
-
-#simulate a sample from the posterior
-pois_rate_sim2000 <- coda.samples(pois_rate_jags2000,
-                        variable.names = c("beta0", "beta1", "beta2"), n.iter=5000000)
-
-#store the samples in a data frame:
-pois_rate_samples2000 <- data.frame(steps=c(1:5000000), pois_rate_sim2000[[1]])
-head(pois_rate_samples2000)
-
-#plot(pois_rate_sim2000)
-#summary(pois_rate_sim2000)
-
-#library(MacBayes)
-running_mean_plot(pois_rate_samples2000$beta0)
-```
-
-
-
-```{r}
-# GOOD RJAGS POISSON MODEL
-# Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
-# Allows both intercept and slope to vary by longitude range
-
-pois_rate_model20002 <- "model{
-  #Data
-  for (i in 1:length(numQuakes)) {
-    #Note: dnorm in rjags takes the precision, not st. dev.
-    numQuakes[i] ~ dpois(lambda[i])
-    log(lambda[i]) = beta0 + beta1[lon[i]] + beta2*year[i] + beta3[lon[i]]*year[i]
-  }
-
-  #Priors - very vague, we assume we know nothing about the rate of earthquakes or how this rate
-  # is affected by our chosen variables
-  
-  beta0 ~ dnorm(0, 1/100^2)
-  beta2 ~ dnorm(0, 1/100^2)
-  beta1[1] <- 0
-  beta3[1] <- 0
-  for (i in 2:9) {
-    beta1[i] ~ dnorm(0, 1/100^2)
-    beta3[i] ~ dnorm(0, 1/100^2)
-  }
-  
-  
-}"
-
-#set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
-#set the random number seed
-pois_rate_jags20002 <- jags.model(textConnection(pois_rate_model20002),
-                        data = list(numQuakes = groupedQuakes2000$count, lon = groupedQuakes2000$LongCat, year = groupedQuakes2000$Year_),
-                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
-
-#simulate a sample from the posterior
-pois_rate_sim20002 <- coda.samples(pois_rate_jags20002,
-                        variable.names = c("beta0", "beta1", "beta2", "beta3"), n.iter=2000000)
-
-#store the samples in a data frame:
-pois_rate_samples20002 <- data.frame(steps=c(1:2000000), pois_rate_sim20002[[1]])
-#head(pois_rate_samples20002)
-
-#plot(pois_rate_sim2)
-summary(pois_rate_sim20002)
-```
-
-
-```{r}
+# Making predictions for US - assuming log of magnitude is Normally distributed
 set.seed(1997)
-tToQpred2000 <- rep(0,10000)
+mag_US_preds <- rep(0,50000)
 
-# REMEMBER TO ACCOUNT FOR LOG
-for (i in 1:10000) {
-  tToQpred2000[i] <- rexp(1, rate=pois_rate_samples2[i,]$beta0 + pois_rate_samples2[i,]$beta1 + pois_rate_samples2[i,]$beta2*year + pois_rate_samples2[i,]$beta3*year)
+# Account for log
+for (i in 1:50000) {
+  mag_US_preds[i] <- exp(rnorm(1, mean=mag_region_samplesC2000[i,]$beta0 + mag_region_samplesC2000[i,]$beta1.5.,
+                               sd=sqrt(1/(mag_region_samplesC2000[i,]$tau0 + mag_region_samplesC2000$tau1.5.))))
 }
 
+# Visualize distribution for prediction of magnitude by region:
+ggplot(data=as.data.frame(mag_US_preds), aes(x=mag_US_preds)) + 
+  geom_histogram(boundary=0, color="white", aes(y=..density..)) + xlab("Magnitude (Richter Scale)") + 
+  ylab("Density") + lims(x=c(3,7), y=c(0,1)) + ggtitle("Predicted Magnitude for Next Earthquake in the Continental US")
 ```
-
 
 ```{r}
-# Visualize distribution for time til next large quake:
-ggplot(data=as.data.frame(tToQpred), aes(x=toToQpred)) + 
-  geom_histogram(boundary=0, color="white", aes(y=..density..))
+quantile(mag_US_preds, c(0.025, 0.975))
+sum(mag_US_preds >= 7)
 ```
+Middle 95% credible interval: [4.8, 5.9]
 
 
 

@@ -1,0 +1,60 @@
+---
+output:
+  html_document:
+    theme: flatly
+    toc: TRUE
+    toc_float: TRUE
+---
+
+# Predicting the Unpredictable: Should You Really Be Worried about the Big One?
+
+BY KATJA MCKIERNAN AND KATYA KELLY
+\
+DECEMBER 18 2017
+
+\
+
+Earthquakes are one of the most unpredictable natural disasters that occur in the western United States. As statisticians who also study geology and geography, we decided to tackle the challenge of making predictions about earthquakes. We're both from cities that have been tormented by a variety of media sources warning of the impending "Big One" (Los Angeles, California and Tacoma, Washington). Just take a peek at this 2015 article heading from *The New Yorker*:
+
+\
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/bigOneNewYorker.jpg)
+
+\
+
+Scary, right? Pretty much the entire west coast was on high alert for a couple years, holding city-wide earthquake drills and demanding everyone take the time to nail their bookshelves to the walls. While the hype has since died down a little, we wanted to dive deeper into earthquake predictions. Although the Big One was rumored to possibly exceed a magnitude of 9.0 on the Richter Scale, we defined quakes of magnitude 7+ to be "big" for the sake of having enough data. The first question you might have is: how likely are we to see an earthquake this big in the next year? What about in the next five? We hope to approach an answer to these questions using Bayesian statistical modeling and regression.
+
+# The Data
+We collected all of our data from the United States Geological Survey (USGS) website. For predicting magnitude, we gathered 4700 observations of earthquakes above a magnitude of 4.5 since the year 2000. For our yearly rate predictions, we have 88 observations of earthquakes above a magnitude of 7 since 1900.
+
+### Preliminary Exploration
+To get acquainted with the data, we created maps to get a sense for where the earthquakes in our data set were occurring. Using the ggmap package, we were able to use our latitude and longitude data to plot the earthquakes directly on base maps pulled from Google Maps. First, we plotted earthquakes by their magnitudes:
+
+\
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/quakesByMag.jpg)
+\
+\
+
+Next, we plotted by year:
+
+\
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/quakesByYear.jpg)
+
+\
+
+The trends in these maps gave us a few ideas for our analysis. What if we started with a simpler model relating magnitude to geographic region, then moved into a more complex model to estimate the yearly rate of earthquakes? These models would certainly be of significance to those living in earthquake-prone areas. We can use Bayesian regression and modeling techniques to make predictions about the relationships among our variables of interest.
+
+# Predicting magnitude
+
+
+# Predicting yearly rate
+
+# How long until the next Big One?
+
+# Next steps
+
+# Resources
+
+# Appendix

@@ -108,7 +108,7 @@ map7 <- ggmap(centerLA) + geom_point(data=quakesAbove7Since1950, aes(x = longitu
 map8 <- ggmap(centerPH) + geom_point(data=quakesAbove7Since1950, aes(x=longitude, y=latitude, color=Year_), size = 1) +
   scale_color_gradient(low="white", high="chartreuse4")
 
-grid.arrange(map5, map6, map7, map8, ncol=2)
+grid.arrange(map5, map6, map7, map8, ncol=2, top="Earthquakes by Year, 1950-2016")
 ```
 
 

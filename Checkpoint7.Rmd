@@ -104,7 +104,7 @@ regionClean <- regionClean %>%
 
 # Plot magnitude by region
 library(ggplot2)
-ggplot(data=regionClean, aes(x=region, y=log(mag))) + geom_boxplot() + xlab("Region") + ylab("Log of Magnitude")
+ggplot(data=regionClean, aes(x=region, y=log(mag))) + geom_boxplot() + xlab("Region") + ylab("log(Magnitude)")
 ```
 
 Based on these boxplots, the relationship between magnitude and region seems not incredibly significant, but we will try a model anyway. It appears that the variance is somewhat different among these regions, but the medians hover around the same value of just under 5.
@@ -152,7 +152,7 @@ mag_region_model <- "model{
 }"
 
 #set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
+#combining the model and data
 #set the random number seed
 mag_region_jags <- jags.model(textConnection(mag_region_model),
                         data = list(M=log(regionClean$mag), rCan=regionClean$regionCanada, rMex=regionClean$regionMexico, rHI = regionClean$regionHawaii, rUS = regionClean$regionUS),
@@ -202,7 +202,7 @@ mag_region_modelC <- "model{
 }"
 
 #set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
+#combining the model and data
 #set the random number seed
 mag_region_jagsC <- jags.model(textConnection(mag_region_modelC),
                         data = list(M=log(regionClean$mag), region=as.factor(regionClean$region)),
@@ -301,7 +301,7 @@ pois_rate_model <- "model{
 }"
 
 #set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
+#combining the model and data
 #set the random number seed
 pois_rate_jags <- jags.model(textConnection(pois_rate_model),
                         data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
@@ -353,7 +353,7 @@ pois_rate_model2 <- "model{
 }"
 
 #set up an algorithm to simulate the posterior by
-#combining the model (nfl_model) and data (sports)
+#combining the model and data
 #set the random number seed
 pois_rate_jags2 <- jags.model(textConnection(pois_rate_model2),
                         data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
@@ -424,6 +424,60 @@ ggplot(data=as.data.frame(tToQUS2018_20), aes(x=tToQUS2018_20)) +
 # Chance of having to wait less than 1 year until the next large quake
 mean(tToQUS2018_20 < 1)
 ```
+
+
+### Visualization of earthquakes since 2000 by magnitude
+```{r}
+library(ggmap)
+centerLA <- get_map(location = "los angeles",
+    color = "color",
+    source = "google",
+    maptype = "satellite",
+    zoom = 4)
+
+centerPH <- get_map(location = "port heiden",
+    color = "color",
+    source = "google",
+    maptype = "satellite",
+    zoom = 4)
+
+ggmap(centerLA,
+    extent = "device",
+    ylab = "Latitude",
+    xlab = "Longitude")
+
+ggmap(centerPH,
+    extent = "device",
+    ylab = "Latitude",
+    xlab = "Longitude")
+
+quakes2000Above7 <- filter(Quakes2000, mag >= 7)
+
+# color by magnitude, all earthquakes
+map1 <- ggmap(centerLA) + geom_point(data=Quakes2000, aes(x = longitude, y =latitude, color=mag), size = 0.5) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+map2 <- ggmap(centerPH) + geom_point(data=Quakes2000, aes(x=longitude, y=latitude, color=mag), size = 0.5) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+
+# color by magnitude, earthquakes above 7
+map3 <- ggmap(centerLA) + geom_point(data=quakes2000Above7, aes(x = longitude, y =latitude, color=mag), size = 1) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+map4 <- ggmap(centerPH) + geom_point(data=quakes2000Above7, aes(x=longitude, y=latitude, color=mag), size = 1) +
+  scale_color_gradient(low="lightsalmon", high="darkred")
+
+library(gridExtra)
+grid.arrange(map1, map2, map3, map4, ncol=2, top="Earthquakes by Magnitude, 2000-2017")
+```
+
+
+
+
+
+
+
+
+
+
 
 
 

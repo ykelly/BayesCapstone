@@ -309,14 +309,14 @@ pois_rate_jags <- jags.model(textConnection(pois_rate_model),
 
 #simulate a sample from the posterior
 pois_rate_sim <- coda.samples(pois_rate_jags,
-                        variable.names = c("beta0", "beta1", "beta2"), n.iter=500000)
+                        variable.names = c("beta0", "beta1", "beta2"), n.iter=5000000)
 
 #store the samples in a data frame:
-pois_rate_samples <- data.frame(steps=c(1:500000), pois_rate_sim[[1]])
+pois_rate_samples <- data.frame(steps=c(1:5000000), pois_rate_sim[[1]])
 head(pois_rate_samples)
 
-plot(pois_rate_sim)
-summary(pois_rate_sim)
+#plot(pois_rate_sim)
+#summary(pois_rate_sim)
 ```
 
 Model 2:
@@ -329,7 +329,7 @@ $$\beta_k \sim N(0, 100^2)$$
 # Rjags for Poisson regression - estimating rate of earthquakes per longitude range per year, lambda
 # Allows both intercept and slope to vary by longitude range
 
-pois_rate_model <- "model{
+pois_rate_model2 <- "model{
   #Data
   for (i in 1:length(numQuakes)) {
     #Note: dnorm in rjags takes the precision, not st. dev.
@@ -354,22 +354,65 @@ pois_rate_model <- "model{
 #set up an algorithm to simulate the posterior by
 #combining the model (nfl_model) and data (sports)
 #set the random number seed
-pois_rate_jags <- jags.model(textConnection(pois_rate_model),
+pois_rate_jags2 <- jags.model(textConnection(pois_rate_model2),
                         data = list(numQuakes = groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
                         inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
 
 #simulate a sample from the posterior
-pois_rate_sim <- coda.samples(pois_rate_jags,
+pois_rate_sim2 <- coda.samples(pois_rate_jags2,
                         variable.names = c("beta0", "beta1", "beta2"), n.iter=500000)
 
 #store the samples in a data frame:
-pois_rate_samples <- data.frame(steps=c(1:500000), pois_rate_sim[[1]])
-head(pois_rate_samples)
+pois_rate_samples2 <- data.frame(steps=c(1:500000), pois_rate_sim2[[1]])
+head(pois_rate_samples2)
 
-plot(pois_rate_sim)
-summary(pois_rate_sim)
+plot(pois_rate_sim2)
+summary(pois_rate_sim2)
 ```
 
+### Question: How can we use our estimated rate of earthquakes to predict the time until the next large quake by region, where region is characterized by a 20-degree range of longitudes?
+```{r}
+# Rjags for Exponential regression - estimating time (in years) until next large earthquake by region
+# Allows both intercept and slope to vary by longitude range
+
+exp_model <- "model{
+  #Data
+  for (i in 1:N) {
+    #Note: dnorm in rjags takes the precision, not st. dev.
+    tToQ[i] ~ dexp(lambda[i])
+    log(r[i]) = beta0 + beta1[lon[i]] + beta2[lon[i]]*year[i]
+  }
+
+  #Priors - informative, based on output from the Poisson regression
+
+  beta1List <- c(0, )
+  beta2List <- c(0, )
+  beta0 <- 
+  
+  for (i in 1:N) {
+    lambda[i] ~ dgamma(1, r[i])
+  }
+  
+}"
+
+#set up an algorithm to simulate the posterior by
+#combining the model (nfl_model) and data (sports)
+#set the random number seed
+exp_jags <- jags.model(textConnection(exp_model),
+                        data = list(N = nrow(groupedQuakes116), tToQ = 1/groupedQuakes116$count, lon = groupedQuakes116$LongCat, year = groupedQuakes116$Year_),
+                        inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1989))
+
+#simulate a sample from the posterior
+exp_sim <- coda.samples(exp_jags,
+                        variable.names = c("lambda"), n.iter=500000)
+
+#store the samples in a data frame:
+exp_samples <- data.frame(steps=c(1:500000), exp_sim[[1]])
+head(exp_samples)
+
+plot(exp_sim)
+summary(exp_sim)
+```
 
 
 
