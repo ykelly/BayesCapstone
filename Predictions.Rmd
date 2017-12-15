@@ -176,6 +176,7 @@ ggplot(data=as.data.frame(mag_US_preds), aes(x=mag_US_preds)) +
 ```{r}
 quantile(mag_US_preds, c(0.025, 0.975))
 sum(mag_US_preds >= 7)
+mean(mag_US_preds)
 ```
 Middle 95% credible interval: [4.8, 5.9]
 

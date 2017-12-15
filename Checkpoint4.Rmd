@@ -98,15 +98,15 @@ grid.arrange(map1, map2, map3, map4, ncol=2)
 ```{r}
 # color by year, all earthquakes since 1950
 map5 <- ggmap(centerLA) + geom_point(data=quakesSince1950, aes(x = longitude, y =latitude, color=Year_), size = 0.5) +
-  scale_color_gradient(low="white", high="chartreuse4")
+  scale_color_gradient(low="white", high="chartreuse4") + xlab("") + ylab("")
 map6 <- ggmap(centerPH) + geom_point(data=quakesSince1950, aes(x=longitude, y=latitude, color=Year_), size = 0.5) +
-  scale_color_gradient(low="white", high="chartreuse4")
+  scale_color_gradient(low="white", high="chartreuse4") + xlab("") + ylab("")
 
 # color by year, earthquakes above 7 since 1950
 map7 <- ggmap(centerLA) + geom_point(data=quakesAbove7Since1950, aes(x = longitude, y =latitude, color=Year_), size = 1) +
-  scale_color_gradient(low="white", high="chartreuse4")
+  scale_color_gradient(low="white", high="chartreuse4") + xlab("") + ylab("")
 map8 <- ggmap(centerPH) + geom_point(data=quakesAbove7Since1950, aes(x=longitude, y=latitude, color=Year_), size = 1) +
-  scale_color_gradient(low="white", high="chartreuse4")
+  scale_color_gradient(low="white", high="chartreuse4") + xlab("") + ylab("")
 
 grid.arrange(map5, map6, map7, map8, ncol=2, top="Earthquakes by Year, 1950-2016")
 ```

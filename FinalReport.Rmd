@@ -10,7 +10,7 @@ output:
 
 BY KATJA MCKIERNAN AND KATYA KELLY
 \
-DECEMBER 18 2017
+DECEMBER 17 2017
 
 \
 
@@ -28,7 +28,7 @@ Scary, right? Pretty much the entire west coast was on high alert for a couple y
 We collected all of our data from the United States Geological Survey (USGS) website. For predicting magnitude, we gathered 4700 observations of earthquakes above a magnitude of 4.5 since the year 2000. For our yearly rate predictions, we have 88 observations of earthquakes above a magnitude of 7 since 1900.
 
 ### Preliminary Exploration
-To get acquainted with the data, we created maps to get a sense for where the earthquakes in our data set were occurring. Using the ggmap package, we were able to use our latitude and longitude data to plot the earthquakes directly on base maps pulled from Google Maps. First, we plotted earthquakes by their magnitudes:
+To get acquainted with the data, we created maps to get a sense for where the earthquakes in our data set were occurring. Using the ggmap package, we were able to use our latitude and longitude data to plot the earthquakes directly on base maps pulled from Google Maps. Each set of maps shows all earthquakes in the top two maps and only large earthquakes in the bottom two. First, we have earthquakes by their magnitudes:
 
 \
 
@@ -48,13 +48,74 @@ The trends in these maps gave us a few ideas for our analysis. What if we starte
 
 # Predicting magnitude
 
+### The Model
+
+To start off simple, something that may be helpful or interesting to know is how big you can expect the next earthquake to be. Many small earthquakes happen daily in Alaska and on the west coast of the US, where we will focus our analysis. For this reason, we chose to make predictions about earthquakes that people are likely to actually feel.
+
+\
+Our data set consists of all magnitude 4.5+ earthquakes in North America from 2000-2017. We added a column to the data that specifies the broad region in which each quake occurred: Alaska, Canada, Hawaii, Mexico, or US. Below are some boxplots we used to explore the relationship between region and magnitude, where magnitude is log-transformed to account for expected skew:
+
+\
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/magByRegion.jpeg)
+
+\
+
+From these plots, there appear to be small differences in median magnitudes and in variation by region. Okay, we know — there's nothing especially fascinating going on here, but it's worth an exploration. We can construct a model that we believe captures some of the observed trends. If we let $M_i$ represent the magnitude of earthquake $i$ and $X_i$ be the region in which earthquake $i$ occurred, then we can obtain the following model and priors:
+
+\
+
+$$\log(M_i)|\beta_0, \beta_1, \tau_0, \tau_1 \sim N(\beta_0 + \beta_{1i}X_i, (\tau_0 + \tau_{1i}X_i)^{-1})$$
+$$\beta_0, \beta_1 \sim N(0, 100^2)$$
+$$\tau_0 \sim N(10,100^2)$$
+$$\tau_1 \sim N(0, 100^2)$$
+
+\
+
+According to this model, we assume that log(magnitude) is Normally distributed. We allow each region its own error term to account for the differences in variation we saw in the boxplots. Our prior understanding of the parameters $\beta_0, \beta_1, \tau_0$ and $\tau_1$ is vague — we assign an uninformative mean and arbitrarily large variance to each.
+
+### Analysis & Results 
+
+Now that we have a model set up, we can start getting into the meat of the prediction process: estimating the parameters that will lead to our prediction distribution! We begin by using the rjags package to fit our model. Since $X_i$ is a categorical variable, we set Alaska as a reference group and estimate $\beta_{1i}$ and $\tau_{1i}$ as differences from the reference. We want to run enough simulations of sample posteriors that the posterior mean values of the parameters stabilize. After a few trials, we use a running mean plot function from the MacBayes package to determine that 50,000 iterations of the algorithm would suffice. Below is a sample running mean plot for the posterior value of $\beta_0$:
+
+\
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/runningMeanEx1.jpeg)
+
+\
+
+Once we are comfortable with our simulations, we can take a look at the posterior distributions of our parameters. First, we see the plots for $\beta_0$ and each $\beta_{1i}$:
+
+\
+
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/postMag1.jpeg) ![](/Users/Katya/Documents/Bayesian/BayesCapstone/postMag2.jpeg)
+
+\
+
+The $\beta_0$ distribution tells us we can expect a base magnitude of about $e^{1.585}$, which is about 4.88 (our model predicts log(magnitude), remember). Each of the $\beta_{1}$ plots represents the change in magnitude prediction from the base for a given region. The regions are in alphabetical order so that the reference (beta1[1]) is Alaska, followed by Canada, Hawaii, Mexico, and the US (beta1[2], beta1[3], beta1[4], and beta1[5], respectively). Apart from the reference, each $\beta_1$ plot is centered somewhere slightly above 0. This indicates that all regions are expected to have higher magnitude earthquakes than Alaska, on average. This does indeed match the trend we saw in the boxplots, where Alaska's median expected magnitude was the lowest. Depending on how much you know about Alaska, this may be surprising — Alaska has experienced some of the largest earthquakes on record. But Alaska also experiences some of the most *frequent* earthquakes, many of which are not so large. Thus, it's likely that these results are reflective of a relatively small percentage of large earthquakes compared to moderate ones.
+
+\
+
+Next, we see the plots for the error parameters, $\tau_0$ and $\tau_1$:
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/postMag3.jpeg) ![](/Users/Katya/Documents/Bayesian/BayesCapstone/postMag4.jpeg) 
+
+\
+
+Created random sample from the distribution we created. In the end, we found that we would expect the next moderate and above earthquake to be about a 4.96 magnitude.
+
 
 # Predicting yearly rate
 
-# How long until the next Big One?
+### The Model
 
-# Next steps
+Another important study to conduct is figuring out the yearly rate of large earthquakes (above 7 magnitude). To do this we created a poisson model where the rate lambda is based on the longitude range and year of interest. We then got a yearly rate of earthquakes for each longtitude range. 
+
+### Analysis & Results
+
+# Limitations and next steps
 
 # Resources
 
-# Appendix
+# Appendix - code and supplementary material
