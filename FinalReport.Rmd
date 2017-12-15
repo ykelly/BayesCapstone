@@ -28,7 +28,7 @@ Scary, right? Pretty much the entire west coast was on high alert for a couple y
 We collected all of our data from the United States Geological Survey (USGS) website. For predicting magnitude, we gathered 4700 observations of earthquakes above a magnitude of 4.5 since the year 2000. For our yearly rate predictions, we have 88 observations of earthquakes above a magnitude of 7 since 1900.
 
 ### Preliminary Exploration
-To get acquainted with the data, we created maps to get a sense for where the earthquakes in our data set were occurring. Using the ggmap package, we were able to use our latitude and longitude data to plot the earthquakes directly on base maps pulled from Google Maps. Each set of maps shows all earthquakes in the top two maps and only large earthquakes in the bottom two. First, we have earthquakes by their magnitudes:
+To get acquainted with the data, we created maps to get a sense for where the earthquakes in our data set were occurring. Using the `ggmap` package, we were able to use our latitude and longitude data to plot the earthquakes directly on base maps pulled from Google Maps. Each set of maps shows all earthquakes in the top two maps and only large earthquakes in the bottom two. First, we have earthquakes by their magnitudes:
 
 \
 
@@ -44,7 +44,7 @@ Next, we plotted by year:
 
 \
 
-The trends in these maps gave us a few ideas for our analysis. What if we started with a simpler model relating magnitude to geographic region, then moved into a more complex model to estimate the yearly rate of earthquakes? These models would certainly be of significance to those living in earthquake-prone areas. We can use Bayesian regression and modeling techniques to make predictions about the relationships among our variables of interest.
+Firstly and importantly, our maps reflect current geological knowledge of plate boundaries, yay! Secondly, you may notice that there are far more smaller/moderate earthquakes than larger ones, with magnitudes 4.5-5 being the most common. This is what we would expect both based on personal knowledge and general earthquake knowledge (looks like those geology and geography minors are useful after all). As far as yearly trends go, it appears that there may be more earthquakes overall in the past 20 years than in the 1950s. That being said, it is possible that smaller earthquakes were not recorded as reliably in earlier years as they are today. Although there aren't any obvious trends, these maps still gave us a few ideas for our analysis. What if we started with a simpler model relating magnitude to geographic region, then moved into a more complex model to estimate the yearly rate of earthquakes? These models would certainly be of significance to those living in earthquake-prone areas.
 
 # Predicting magnitude of the next quake
 
@@ -66,17 +66,17 @@ From these plots, there appear to be small differences in median magnitudes and 
 \
 
 $$\log(M_i)|\beta_0, \beta_1, \tau_0, \tau_1 \sim N(\beta_0 + \beta_{1i}X_i, (\tau_0 + \tau_{1i}X_i)^{-1})$$
-$$\beta_0, \beta_1 \sim N(0, 100^2)$$
+$$\beta_0, \beta_{1i} \sim N(0, 100^2)$$
 $$\tau_0 \sim N(10,100^2)$$
-$$\tau_1 \sim N(0, 100^2)$$
+$$\tau_{1i} \sim N(0, 100^2)$$
 
 \
 
-According to this model, we assume that log(magnitude) is Normally distributed. We allow each region its own error term to account for the differences in variation we saw in the boxplots. Our prior understanding of the parameters $\beta_0, \beta_1, \tau_0$ and $\tau_1$ is vague — we assign an uninformative mean and arbitrarily large variance to each.
+According to this model, we assume that log(magnitude) is Normally distributed. We allow each region its own error term to account for the differences in variation we saw in the boxplots. $\beta_0$ refers to our base expected posterior magnitude for Alaska, and $\tau_0$ is the base precision, which is equivalent to the inverse of variance. Since $X_i$ is a categorical variable, we set Alaska as a reference group and estimate $\beta_{1i}$ and $\tau_{1i}$ as differences from the reference. The regions are in alphabetical order so that beta1[1] is Alaska, followed by Canada, Hawaii, Mexico, and the US (beta1[2], beta1[3], beta1[4], and beta1[5], respectively). Our prior understanding of the parameters $\beta_0, \beta_{i1}, \tau_0$ and $\tau_{1i}$ is vague — we assign an uninformative mean and arbitrarily large variance to each.
 
 ### Analysis & results 
 
-Now that we have a model set up, we can start getting into the meat of the prediction process: estimating the parameters that will lead to our prediction distribution! We begin by using the rjags package to fit our model. Since $X_i$ is a categorical variable, we set Alaska as a reference group and estimate $\beta_{1i}$ and $\tau_{1i}$ as differences from the reference. We want to run enough simulations of sample posteriors that the posterior mean values of the parameters stabilize. After a few trials, we use a running mean plot function from the MacBayes package to determine that 50,000 iterations of the algorithm would suffice. Below is a sample running mean plot for the posterior value of $\beta_0$:
+Now that we have a model set up, we can start getting into the meat of the prediction process: estimating the parameters that we can use to approximate the posterior model and make our prediction distribution! We begin by using the rjags package to fit our model. We want to run enough simulations of sample posteriors that the posterior mean values of the parameters stabilize. After a few trials, we use a running mean plot function from the `MacBayes` package to determine that 50,000 iterations of the algorithm would suffice. Below is a sample running mean plot for the posterior value of $\beta_0$:
 
 \
 
@@ -93,25 +93,25 @@ Once we are comfortable with our simulations, we can take a look at the posterio
 
 \
 
-The $\beta_0$ distribution tells us we can expect a base magnitude of about $e^{1.585}$, which is about 4.88 (our model predicts log(magnitude), remember). Each of the $\beta_{1}$ plots represents the change in magnitude prediction from the base for a given region. The regions are in alphabetical order so that the reference (beta1[1]) is Alaska, followed by Canada, Hawaii, Mexico, and the US (beta1[2], beta1[3], beta1[4], and beta1[5], respectively). Apart from the reference, each $\beta_1$ plot is centered somewhere slightly above 0. This indicates that all regions are expected to have higher magnitude earthquakes than Alaska, on average. This does indeed match the trend we saw in the boxplots, where Alaska's median expected magnitude was the lowest. Depending on how much you know about Alaska, this may be surprising — Alaska has experienced some of the largest earthquakes on record. But Alaska also experiences some of the most *frequent* earthquakes, many of which are not so large. Thus, it's likely that these results are reflective of a relatively small percentage of large earthquakes compared to moderate ones.
+The $\beta_0$ distribution tells us we can expect a base magnitude (in Alaska) of about $e^{1.585}$, which is about 4.88 (our model predicts log(magnitude), remember). Each of the $\beta_{1i}$ plots represents the change in magnitude prediction from Alaska for a given region. Apart from the reference, each $\beta_{1i}$ plot is centered somewhere slightly above 0. This indicates that all regions are expected to have higher magnitude earthquakes than Alaska, on average. This does indeed match the trend we saw in the boxplots, where Alaska's median expected magnitude was the lowest. Depending on how much you know about Alaska, this may be surprising — Alaska has experienced some of the largest earthquakes on record. But Alaska also experiences some of the most *frequent* earthquakes, many of which are not so large. Thus, it's likely that these results are reflective of a relatively small percentage of large earthquakes compared to moderate ones.
 
 \
 
-Next, we see the plots for the error parameters, $\tau_0$ and $\tau_1$:
+Next, we see the plots for the error parameters, $\tau_0$ and $\tau_{1i}$:
 
 ![](/Users/Katya/Documents/Bayesian/BayesCapstone/postMag3.jpeg) ![](/Users/Katya/Documents/Bayesian/BayesCapstone/postMag4.jpeg) 
 
 \
 
-As with the $\beta_1$ parameters, tau1[1] is set as the reference and represents Alaska. The rest of the $\tau_1$ parameters are centered at negative values, telling us that all other regions tend to have higher precision (lower variance) than Alaska. If you revisit the boxplots from before, you can see that they are consistent with this finding.
+As with the $\beta_{1i}$ parameters, tau1[1] is set as the reference and represents Alaska. The rest of the $\tau_{1i}$ parameters are centered at negative values, telling us that all other regions tend to have higher precision (lower variance) than Alaska. If you revisit the boxplots from before, you can see that they are consistent with this finding.
 
 \
 
-Okay, enough about the posterior distributions already — let's make some predictions! We want to know how big we can expect the next notable earthquake might be in the continental US (our data), since that's where both of us live. We can store our posterior samples in a data frame and build a vector of predictions based on our region of interest. We assume that the log of the next US quake's magnitude is also Normally distributed as in our original model. Notice that the $\beta_1$ and $\tau_1$ parameters have been adjusted to reflect that we are making predictions for the US, the fifth region:
+Okay, enough about the posterior distributions already — let's make some predictions! We want to know how big we can expect the next notable earthquake might be in the continental US (our data), since that's where both of us live. We can store our posterior samples in a data frame and build a vector of predictions based on our region of interest. We assume that the log of the next US quake's magnitude is also Normally distributed as in our original model. Notice that the $\beta_{1i}$ and $\tau_{1i}$ parameters have been adjusted to reflect that we are making predictions for the US, the fifth region:
 
 $$\log(M_{\text{(next US)}}|\beta_0, \beta_{1[5]}, \tau_0, \tau_{1[5]} \sim N(\beta_0 + \beta_{1[5]}\text{US}, (\tau_0 + \tau_{1[5]}\text{US})^{-1})$$
 
-We use the rnorm function to take 50,000 random draws from the Normal distribution with the means and variances specified by our posterior simulations. Then we can plot a simple histogram of the predictions:
+We use the `rnorm` function to take 50,000 random draws from the Normal distribution with the means and variances specified by our posterior simulations. Then we can plot a simple histogram of the predictions:
 
 \
 
@@ -146,11 +146,11 @@ Unlike with our magnitude model, our rate model did not fare so well with stabil
 As such students with limited time, we didn't get to explore everything we wanted to. First, we'd like to consider other available variables to predict magnitude, such as earthquake depth. Additionally, there was a suspicious spike in the number of large earthquakes in 1957 (8 of them!) that we would like to investigate. We could break down the regions to be more specific, or expand our focus to other parts of the world so we don't seem so selfish. Another interesting aspect to explore is the relationship between large earthquakes and their fore- and aftershocks, which we could use to improve our prediction models.
 
 # Resources
-Packages: MacBayes, dplyr, ggplot2, lubridate, rjags, ggmap, stringr, gridExtra
+Packages: `MacBayes`, `dplyr`, `ggplot2`, `lubridate`, `rjags`, `ggmap`, `stringr`, `gridExtra`
 
 \
 
-All data sourced from United States Geological Survey (USGS) website.
+All data was sourced from the United States Geological Survey (USGS) website.
 
 \
 
