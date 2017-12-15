@@ -107,7 +107,7 @@ As with the $\beta_1$ parameters, tau1[1] is set as the reference and represents
 
 \
 
-Okay, enough about the posterior distributions already — let's make some predictions! We want to know how big we can expect the next notable earthquake might be in the continental US, since that's where both of us live. We can store our posterior samples in a data frame and build a vector of predictions based on our region of interest. We assume that the log of the next US quake's magnitude is also Normally distributed as in our original model. Notice that the $\beta_1$ and $\tau_1$ parameters have been adjusted to reflect that we are making predictions for the US, the fifth region:
+Okay, enough about the posterior distributions already — let's make some predictions! We want to know how big we can expect the next notable earthquake might be in the continental US (our data), since that's where both of us live. We can store our posterior samples in a data frame and build a vector of predictions based on our region of interest. We assume that the log of the next US quake's magnitude is also Normally distributed as in our original model. Notice that the $\beta_1$ and $\tau_1$ parameters have been adjusted to reflect that we are making predictions for the US, the fifth region:
 
 $$\log(M_{\text{(next US)}}|\beta_0, \beta_{1[5]}, \tau_0, \tau_{1[5]} \sim N(\beta_0 + \beta_{1[5]}\text{US}, (\tau_0 + \tau_{1[5]}\text{US})^{-1})$$
 
@@ -119,7 +119,7 @@ We use the rnorm function to take 50,000 random draws from the Normal distributi
 
 \
 
-This distribution probably doesn't look too surprising, but we can calculate a couple of statistics we are interested in (see appendix for code). For example, the expected value of the next earthquake's magnitude is about 4.96, and a middle 95% credible interval is [4.2, 5.9]. Only 1 of the 50,000 predictions made was of magnitude 7+. So, based on trends in magnitude since 2000, we rarely expect the next continental US earthquake to be very large. Maybe this makes you feel better, but maybe you're thinking "Wait, this data only spans a measly 18 years where there happened to be no earthquakes above magnitude 7 in this region!" If you're feeling that second sentiment, then 1) congratulations, you're probably more aware than the average person of earthquakes in the continental US, and 2) look no further than the very next section of this blog, where we will look at 88 large earthquakes in North America dating back to 1900. That's a whole 118 years for you!
+This distribution probably doesn't look too surprising, but we can calculate a couple of statistics we are interested in (see appendix for code). For example, the expected value of the next earthquake's magnitude is about 4.96, and a middle 95% credible interval is [4.2, 5.9]. Only 1 of the 50,000 predictions made was of magnitude 7+. So, based on trends in magnitude since 2000, we rarely expect the next continental US earthquake to be very large. Maybe this makes you feel better, but maybe you're thinking "Wait, this data only spans a measly 18 years where there happened to be no earthquakes above magnitude 7 in this region!" If you're feeling that second sentiment, then 1) congratulations, you're probably more aware than the average person of earthquakes in the continental US, and 2) look no further than the very next section of this blog, where we will look at 88 large earthquakes in North America dating back to 1900 and up to 2016. That's a whole 117 years for you!
 
 
 # Predicting yearly rate of large quakes
@@ -128,15 +128,33 @@ Note to Alicia: we intend to follow the same format as the "Predicting magnitude
 
 ### The Model
 
-Another important study to conduct is figuring out the yearly rate of large earthquakes (above 7 magnitude). To do this we created a poisson model where the rate lambda is based on the longitude range and year of interest. We then got a yearly rate of earthquakes for each longtitude range. 
+(Still in progress) Another important study to conduct is figuring out the yearly rate of large earthquakes (above 7 magnitude). To do this we created a poisson model where the rate lambda is based on the longitude range and year of interest. We then got a yearly rate of earthquakes for each longtitude range. 
 
 ### Analysis & results
 
 
 # Limitations and next steps
 
-Every study has its limitations and hopes for the future. 
+Every study has its limitations and hopes for the future. For this study, we first want to acknowledge the limitations of our data sets. As you already have noticed and maybe taken personally, the data we used for predicting magnitude only spanned 18 years. Because so many moderately sized earthquakes happen, the data sets become large quickly, and our average-at-best laptops can only handle so much. Addtionally, the methods we used to obtain the data were susceptible to human error, given that we drew focus areas on a map provided by USGS to specify which earthquakes we wanted.
+
+\
+
+Unlike with our magnitude model, our rate model did not fare so well with stabilized posterior parameter values. We're college students — we don't have days to sit around waiting for millions of simulations to run for more complicated models, so we'll take 2,000,000 and call it good.
+
+\
+
+As such students with limited time, we didn't get to explore everything we wanted to. First, we'd like to consider other available variables to predict magnitude, such as earthquake depth. Additionally, there was a suspicious spike in the number of large earthquakes in 1957 (8 of them!) that we would like to investigate. We could break down the regions to be more specific, or expand our focus to other parts of the world so we don't seem so selfish. Another interesting aspect to explore is the relationship between large earthquakes and their fore- and aftershocks, which we could use to improve our prediction models.
 
 # Resources
+Packages: MacBayes, dplyr, ggplot2, lubridate, rjags, ggmap, stringr, gridExtra
+
+\
+
+All data sourced from United States Geological Survey (USGS) website.
+
+\
+
+Special thanks to inspiration from articles such as the one at the beginning of this post from *The New Yorker*.
 
 # Appendix - code and supplementary material
+Still cleaning code
