@@ -46,7 +46,7 @@ Next, we plotted by year:
 
 The trends in these maps gave us a few ideas for our analysis. What if we started with a simpler model relating magnitude to geographic region, then moved into a more complex model to estimate the yearly rate of earthquakes? These models would certainly be of significance to those living in earthquake-prone areas. We can use Bayesian regression and modeling techniques to make predictions about the relationships among our variables of interest.
 
-# Predicting magnitude
+# Predicting magnitude of the next quake
 
 ### The Model
 
@@ -74,7 +74,7 @@ $$\tau_1 \sim N(0, 100^2)$$
 
 According to this model, we assume that log(magnitude) is Normally distributed. We allow each region its own error term to account for the differences in variation we saw in the boxplots. Our prior understanding of the parameters $\beta_0, \beta_1, \tau_0$ and $\tau_1$ is vague — we assign an uninformative mean and arbitrarily large variance to each.
 
-### Analysis & Results 
+### Analysis & results 
 
 Now that we have a model set up, we can start getting into the meat of the prediction process: estimating the parameters that will lead to our prediction distribution! We begin by using the rjags package to fit our model. Since $X_i$ is a categorical variable, we set Alaska as a reference group and estimate $\beta_{1i}$ and $\tau_{1i}$ as differences from the reference. We want to run enough simulations of sample posteriors that the posterior mean values of the parameters stabilize. After a few trials, we use a running mean plot function from the MacBayes package to determine that 50,000 iterations of the algorithm would suffice. Below is a sample running mean plot for the posterior value of $\beta_0$:
 
@@ -103,18 +103,39 @@ Next, we see the plots for the error parameters, $\tau_0$ and $\tau_1$:
 
 \
 
-Created random sample from the distribution we created. In the end, we found that we would expect the next moderate and above earthquake to be about a 4.96 magnitude.
+As with the $\beta_1$ parameters, tau1[1] is set as the reference and represents Alaska. The rest of the $\tau_1$ parameters are centered at negative values, telling us that all other regions tend to have higher precision (lower variance) than Alaska. If you revisit the boxplots from before, you can see that they are consistent with this finding.
+
+\
+
+Okay, enough about the posterior distributions already — let's make some predictions! We want to know how big we can expect the next notable earthquake might be in the continental US, since that's where both of us live. We can store our posterior samples in a data frame and build a vector of predictions based on our region of interest. We assume that the log of the next US quake's magnitude is also Normally distributed as in our original model. Notice that the $\beta_1$ and $\tau_1$ parameters have been adjusted to reflect that we are making predictions for the US, the fifth region:
+
+$$\log(M_{\text{(next US)}}|\beta_0, \beta_{1[5]}, \tau_0, \tau_{1[5]} \sim N(\beta_0 + \beta_{1[5]}\text{US}, (\tau_0 + \tau_{1[5]}\text{US})^{-1})$$
+
+We use the rnorm function to take 50,000 random draws from the Normal distribution with the means and variances specified by our posterior simulations. Then we can plot a simple histogram of the predictions:
+
+\
+
+![](/Users/Katya/Documents/Bayesian/BayesCapstone/magPredUS.jpeg)
+
+\
+
+This distribution probably doesn't look too surprising, but we can calculate a couple of statistics we are interested in (see appendix for code). For example, the expected value of the next earthquake's magnitude is about 4.96, and a middle 95% credible interval is [4.2, 5.9]. Only 1 of the 50,000 predictions made was of magnitude 7+. So, based on trends in magnitude since 2000, we rarely expect the next continental US earthquake to be very large. Maybe this makes you feel better, but maybe you're thinking "Wait, this data only spans a measly 18 years where there happened to be no earthquakes above magnitude 7 in this region!" If you're feeling that second sentiment, then 1) congratulations, you're probably more aware than the average person of earthquakes in the continental US, and 2) look no further than the very next section of this blog, where we will look at 88 large earthquakes in North America dating back to 1900. That's a whole 118 years for you!
 
 
-# Predicting yearly rate
+# Predicting yearly rate of large quakes
+
+Note to Alicia: we intend to follow the same format as the "Predicting magnitude" section and subsections, but didn't have time to write this one before the draft deadline
 
 ### The Model
 
 Another important study to conduct is figuring out the yearly rate of large earthquakes (above 7 magnitude). To do this we created a poisson model where the rate lambda is based on the longitude range and year of interest. We then got a yearly rate of earthquakes for each longtitude range. 
 
-### Analysis & Results
+### Analysis & results
+
 
 # Limitations and next steps
+
+Every study has its limitations and hopes for the future. 
 
 # Resources
 
